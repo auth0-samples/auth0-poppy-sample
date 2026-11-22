@@ -203,41 +203,38 @@ ${order && html`<ul class="orders">${orderCard(order, catalog)}</ul>`}<p class="
 }
 
 /**
- * The privacy page: the same text as apps/web/app/privacy/page.tsx (change both), less the Agents page, which this
- * storefront doesn't have, and with a Hosting line that names no host. Every statement is checked against the code:
- * keep it true when storage, cookies or logging change. test/privacy-text.test.js fails when the two copies differ
- * in any other way.
+ * The privacy page: the same text as apps/web/app/privacy/page.tsx (change both), with a Hosting line that names no
+ * host. This starter has no Personal Agent Protocol until the quickstart adds it: the agent sentences hold before and
+ * after. Every statement is checked against the code: keep it true when storage, cookies or logging change.
+ * test/privacy-text.test.js fails when the two copies differ in any other way.
  */
 export const privacy = () => html`<article class="privacy">${pageHeader('Privacy', 'What we keep about you and why.')}
 <div class="privacy-intro">
 <p>We keep what we need to run your orders: your name, email address and order history. Drift Bean Demo is a demo store: nothing ships, every order goes to one sample address, and no money moves.</p>
-<p>Your account and your orders are kept until they are deleted. Inactive accounts are not deleted automatically. Carts and agent records expire sooner, as described below.</p>
+<p>Your account and your orders are kept until they are deleted. Inactive accounts are not deleted automatically. Carts expire sooner, as described below.</p>
 </div>
 <section aria-labelledby="privacy-keep" class="panel"><h2 id="privacy-keep">What we keep</h2>
 <ul class="privacy-list">
 <li><strong>Your account.</strong> Your account is a user profile on the store's Auth0 tenant. Auth0 keeps your email address, your name, your password (which the store never sees), when you signed up and last logged in, and the IP address of your last login. Auth0 also records sign-ups and logins in the tenant's logs, and keeps those logs for 1 to 30 days, depending on the tenant's Auth0 plan.</li>
 <li><strong>Carts and orders.</strong> The store's Carts API keeps your cart and your orders in its Upstash Redis database when one is configured, and otherwise in the server's memory, where they are lost when the server restarts. An order records what you bought and for how much, when, your account ID, the sample address, the test card used and the agent that placed it, if any. Orders don't expire. A cart in Redis expires within 30 days of its last change. If you add to the cart before signing in, the cart is kept under a guest ID and moves into your account when you sign in.</li>
-<li><strong>Checkout retries.</strong> When a checkout request carries an Idempotency-Key, the Carts API keeps its answer for 24 hours, in the same place as your orders, so a retry gets that answer instead of placing a second order. For a placed order, that answer is a copy of the order, with the details listed above.</li>
-<li><strong>Request log.</strong> The Carts API keeps its last 500 requests in the server's memory, to debug runs and to show customers what their agents did: the time, the request and its result, your account ID and the agent, if any. It holds no tokens and no request bodies, and it is gone when the server restarts.</li>
 <li><strong>Hosting.</strong> The host that runs the store may keep its own request logs, such as the page requested and when. The store's own code logs only errors and warnings, plus a line when it starts.</li>
 <li><strong>Analytics.</strong> None. The store's code includes no analytics, advertising or tracking scripts.</li>
 </ul></section>
 <section aria-labelledby="privacy-cards" class="panel"><h2 id="privacy-cards">Payment cards</h2>
 <p>Only the test card 4242 4242 4242 4242 is accepted. The test card 4000 0000 0000 0002 is declined, to show a failed payment. Payments are simulated: no payment provider is involved and no payment is taken. An order keeps the card's brand, its last four digits and a simulated payment reference, never the full number.</p></section>
 <section aria-labelledby="privacy-agents" class="panel"><h2 id="privacy-agents">Personal agents</h2>
-<p>When a personal agent shops here, we record which agent it is, when it first and last made a request, how many requests and orders it made and, once you sign it in, your account ID. Orders an agent places are marked with the agent's URL or ID. Agents you approve can shop and check out for you; they can't change your account.</p>
-<p>In Redis, each agent's own record expires within 30 days of its last use. Lists of recent connections can outlast it, and each keeps at most the latest 1,000.</p></section>
+<p>Personal agents can shop here once the store adds Personal Agent Protocol. Orders an agent places are then marked with the agent's URL or ID.</p></section>
 <section aria-labelledby="privacy-cookies" class="panel"><h2 id="privacy-cookies">Cookies</h2>
 <p>This site sets cookies only to sign you in and to keep your cart. Its cookies are:</p>
 <ul class="privacy-list">
 <li>a session cookie that keeps you signed in;</li>
-<li>a guest cookie, when you add to the cart before signing in or when a personal agent shops as a guest. It is removed once your guest cart moves into your account;</li>
+<li>a guest cookie, when you add to the cart before signing in or, once the store supports personal agents, when an agent shops as a guest. It is removed once your guest cart moves into your account;</li>
 <li>short-lived cookies while you sign in.</li>
 </ul>
 <p>The session and guest cookies are encrypted. There are no analytics or advertising cookies. While you sign in, Auth0 also sets its own cookies on its sign-in domain.</p></section>
 <section aria-labelledby="privacy-delete" class="panel"><h2 id="privacy-delete">Deleting your data</h2>
 <p>You can remove items from your cart at any time. To delete your account, ask through Okta's <a href="https://preferences.okta.com/privacy/" target="_blank" rel="noopener noreferrer">online privacy form</a> or at <a href="mailto:privacy@okta.com">privacy@okta.com</a>. You can also call 888-655-1161 (toll-free in the USA) or write to Okta, Inc. (including its subsidiary, Auth0 LLC), ATTN: Okta Data Protection Officer (Okta Privacy Team), 100 First Street, Floor 6, San Francisco, CA 94105, USA.</p>
-<p>Deleting an account permanently removes its Auth0 user profile. Your orders and agent records are kept in the store's own database, not in Auth0, so deleting the account doesn't remove them: ask for them to be deleted too.</p>
+<p>Deleting an account permanently removes its Auth0 user profile. Your orders are kept in the store's own database, not in Auth0, so deleting the account doesn't remove them: ask for them to be deleted too.</p>
 <p>The full <a href="https://www.okta.com/legal/privacy-policy/" target="_blank" rel="noopener noreferrer">Okta Privacy Policy</a> lists these contacts and your other privacy rights.</p></section>
 </article>`;
 

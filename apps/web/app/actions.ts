@@ -4,12 +4,12 @@ import { cardFor } from "@/lib/checkout-options";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth0 } from "@/lib/auth0";
-import { ensureGuestToken, getDriver, requireCustomer } from "@/lib/poppy";
+import { ensureGuestToken, getVisitor } from "@/lib/visitor";
 import { cartsApi, type ApiResult } from "@/lib/carts-api";
 import type { ActionResult } from "@/lib/action-result";
 
 function failure(r: Extract<ApiResult<unknown>, { ok: false }>, returnTo: string): ActionResult {
-  const signIn = (r.reason === "sign_in_required" || r.reason === "token_rejected") && r.caller !== "agent_guest";
+  const signIn = r.reason === "sign_in_required" || r.reason === "token_rejected";
   return { ok: false, message: r.message, signInReturnTo: signIn ? returnTo : undefined };
 }
 
@@ -23,10 +23,9 @@ export async function addToCart(_prev: ActionResult, formData: FormData): Promis
 
   // A person who isn't logged in shops as a guest: the first add creates an anonymous session, and the API keeps
   // the cart under its token until the person signs in (proxy.ts then merges it into the account).
-  // Agent guests already have a token: the API keys their cart by Poppy Session.
-  const driver = await getDriver();
+  const visitor = await getVisitor();
   let as: { token: string; caller: "guest" } | undefined;
-  if (driver.kind === "visitor" || driver.kind === "guest") {
+  if (visitor.kind === "visitor" || visitor.kind === "guest") {
     try {
       as = { token: await ensureGuestToken(), caller: "guest" };
     } catch (err) {
@@ -37,7 +36,7 @@ export async function addToCart(_prev: ActionResult, formData: FormData): Promis
     }
   }
 
-  // The API sets a line's quantity (so retried agent requests are safe), so "add" adds to what's already there.
+  // The API sets a line's quantity (so a retried request is safe), so "add" adds to what's already there.
   // A brand-new guest has no cart yet; treat a failed read as empty.
   const current = await cartsApi.cart();
   const existing = current.ok ? (current.data.items.find((line) => line.productId === productId)?.quantity ?? 0) : 0;
@@ -66,13 +65,6 @@ export async function checkout(_prev: ActionResult, formData: FormData): Promise
   const card = cardFor(String(formData.get("paymentMethodId") ?? "") || undefined);
   const r = await cartsApi.placeOrder(card);
   if (!r.ok) {
-    // The API refuses guests with sign_in_required; the agent must take the customer through sign-in.
-    if (r.reason === "sign_in_required" && r.caller === "agent_guest") {
-      return {
-        ok: false,
-        message: "Checkout is on the customer's account. Sign in through your agent, then check out."
-      };
-    }
     // A person's guest cart: orders need an account. The cart moves into the account on sign-in.
     if (r.reason === "sign_in_required" && r.caller === "guest") {
       return { ok: false, message: "Sign in to check out. Your cart comes with you.", signInReturnTo: "/checkout" };
@@ -83,26 +75,7 @@ export async function checkout(_prev: ActionResult, formData: FormData): Promise
   redirect(`/account/orders/${encodeURIComponent(r.data?.id ?? "")}`);
 }
 
-export async function disconnectAgent(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
-  const gate = await requireCustomer("Only the customer can disconnect an agent.");
-  if (!gate.allowed) return { ok: false, message: gate.message };
-
-  const sessionKey = String(formData.get("sessionKey") ?? "");
-  if (!sessionKey) return { ok: false, message: "Pick an agent first." };
-
-  const r = await cartsApi.disconnectAgent(sessionKey);
-  if (!r.ok) return failure(r, "/agents");
-  revalidatePath("/agents");
-  // Ending the Session doesn't revoke the agent's tokens or its approval: it can start a new Session and, while
-  // those are valid, sign in again without asking. Revoke its access in Auth0 to stop that.
-  return { ok: true, message: "Disconnected. This agent session is over; the agent can start a new one later." };
-}
-
 export async function updateDisplayName(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
-  // Account changes are for the customer only, whatever the agent was approved for.
-  const gate = await requireCustomer("Account details are updated by you, from your own login.");
-  if (!gate.allowed) return { ok: false, message: gate.message };
-
   const session = await auth0.getSession();
   if (!session) {
     return { ok: false, message: "Sign in to change your display name.", signInReturnTo: "/account" };

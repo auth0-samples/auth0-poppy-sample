@@ -1,8 +1,9 @@
 {
   "compilerOptions": {
     "target": "ES2023",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    // tsx runs the source as-is, so imports resolve the way a bundler resolves them: `./auth0.js` and `./auth0` both work.
+    "module": "Preserve",
+    "moduleResolution": "Bundler",
     "lib": ["ES2023"],
     "strict": true,
     "noUncheckedIndexedAccess": true,
@@ -11,5 +12,5 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": ["api", "src", "test", "scripts", "vitest.config.ts"]
+  "include": ["api", "src", "test", "vitest.config.ts"]
 }

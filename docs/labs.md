@@ -77,7 +77,7 @@ Four lines gave you a route that agents can't reach until the customer approves 
 
 ## Lab 4: tighten the rate limit
 
-Policy lives in [`policy.ts`](../apps/carts-api/src/policy.ts). Restart the API with a low limit:
+Policy lives in [`policy.ts`](https://github.com/atko-cic/auth0-poppy-sample/blob/main/apps/carts-api/src/policy.ts). Restart the API with a low limit:
 
 ```sh
 AUTH0_DOMAIN=example.us.auth0.com AUTH0_AUDIENCE=http://localhost:4000 \
@@ -100,7 +100,7 @@ npm run agent -- GET /cart --stranger --sid red
 npm run agent -- GET /cart --defect expired_delegation --sid red
 ```
 
-The first signs as a second test agent that the API hasn't registered. The second signs with a delegation that has expired. Both return `400 invalid_session`, each with its own reason. The other `--defect` names are listed in [`test-agent-mode.ts`](../apps/carts-api/src/dev/test-agent-mode.ts). Try a few and read the error text. When a real agent can't get in, this is the text you'll be reading in your logs.
+The first signs as a second test agent that the API hasn't registered. The second signs with a delegation that has expired. Both return `400 invalid_session`, each with its own reason. The other `--defect` names are listed in [`test-agent-mode.ts`](https://github.com/atko-cic/auth0-poppy-sample/blob/main/apps/carts-api/src/dev/test-agent-mode.ts). Try a few and read the error text. When a real agent can't get in, this is the text you'll be reading in your logs.
 
 ## Next
 

@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { PageHeader } from "../components/ui/PageHeader";
 import { Panel } from "../components/ui/Panel";
 
@@ -10,7 +9,8 @@ export const metadata: Metadata = {
 
 // What the sample keeps, where and for how long. Every statement is checked against the code: keep it true when the
 // storage, cookies or logging change. apps/web-express/src/views.js has the same text (`privacy`); change both.
-// apps/web-express/test/privacy-text.test.js fails when the two differ, apart from the differences it lists.
+// apps/web-express/test/privacy-text.test.js fails when the two differ, apart from the difference it lists.
+// This starter has no Personal Agent Protocol until the quickstart adds it: the agent sentences hold before and after.
 export default function PrivacyPage() {
   return (
     <article className="privacy">
@@ -23,7 +23,7 @@ export default function PrivacyPage() {
         </p>
         <p>
           Your account and your orders are kept until they are deleted. Inactive accounts are not deleted automatically.
-          Carts and agent records expire sooner, as described below.
+          Carts expire sooner, as described below.
         </p>
       </div>
 
@@ -42,16 +42,6 @@ export default function PrivacyPage() {
             the test card used and the agent that placed it, if any. Orders don&apos;t expire. A cart in Redis expires
             within 30 days of its last change. If you add to the cart before signing in, the cart is kept under a guest ID
             and moves into your account when you sign in.
-          </li>
-          <li>
-            <strong>Checkout retries.</strong> When a checkout request carries an Idempotency-Key, the Carts API keeps its
-            answer for 24 hours, in the same place as your orders, so a retry gets that answer instead of placing a second
-            order. For a placed order, that answer is a copy of the order, with the details listed above.
-          </li>
-          <li>
-            <strong>Request log.</strong> The Carts API keeps its last 500 requests in the server&apos;s memory, to debug
-            runs and to show customers what their agents did: the time, the request and its result, your account ID and
-            the agent, if any. It holds no tokens and no request bodies, and it is gone when the server restarts.
           </li>
           <li>
             <strong>Hosting.</strong> The store runs on Vercel, which keeps request logs, such as the page requested and
@@ -77,15 +67,8 @@ export default function PrivacyPage() {
 
       <Panel id="privacy-agents" title="Personal agents">
         <p>
-          When a personal agent shops here, we record which agent it is, when it first and last made a request, how many
-          requests and orders it made and, once you sign it in, your account ID. Orders an agent places are marked with the
-          agent&apos;s URL or ID. Agents you approve can shop and check out for you; they can&apos;t change your account.
-        </p>
-        <p>
-          On the <Link href="/agents">Agents page</Link> you can see the agents connected to your account and disconnect
-          any of them. Disconnecting ends the agent&apos;s session with the store; its record stays, marked as ended. In
-          Redis, each agent&apos;s own record expires within 30 days of its last use. Lists of recent connections can
-          outlast it, and each keeps at most the latest 1,000.
+          Personal agents can shop here once the store adds Personal Agent Protocol. Orders an agent places are then
+          marked with the agent&apos;s URL or ID.
         </p>
       </Panel>
 
@@ -94,7 +77,8 @@ export default function PrivacyPage() {
         <ul className="privacy-list">
           <li>a session cookie that keeps you signed in;</li>
           <li>
-            a guest cookie, when you add to the cart before signing in or when a personal agent shops as a guest. It is
+            a guest cookie, when you add to the cart before signing in or, once the store supports personal agents, when an
+            agent shops as a guest. It is
             removed once your guest cart moves into your account;
           </li>
           <li>short-lived cookies while you sign in.</li>
@@ -116,7 +100,7 @@ export default function PrivacyPage() {
           (Okta Privacy Team), 100 First Street, Floor 6, San Francisco, CA 94105, USA.
         </p>
         <p>
-          Deleting an account permanently removes its Auth0 user profile. Your orders and agent records are kept in the
+          Deleting an account permanently removes its Auth0 user profile. Your orders are kept in the
           store&apos;s own database, not in Auth0, so deleting the account doesn&apos;t remove them: ask for them to be
           deleted too.
         </p>

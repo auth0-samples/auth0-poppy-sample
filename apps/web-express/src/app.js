@@ -5,7 +5,6 @@ import express from 'express';
 import { createAuth0, requiresAuth } from '@auth0/auth0-express';
 import { createCartsApi } from './carts-api.js';
 import { cardFor } from './checkout-options.js';
-import { loadPoppyConfig } from './poppy-config.js';
 import { sameOriginPosts, securityHeaders } from './security.js';
 import { GUEST_SCOPE, apiCaller, ensureCartCaller } from './visitor.js';
 import * as views from './views.js';
@@ -46,10 +45,6 @@ export function createApp({ auth0 = {}, cartsApiUrl, fetch } = {}) {
   app.use(express.urlencoded({ extended: false }));
   app.use(sameOriginPosts({ appBaseUrl: auth0.appBaseUrl }));
 
-  // POPPY (express) 1/2 · Discovery. `poppy: { config }` takes the CLI's poppy.json (src/poppy-config.js reads it once,
-  // at startup, and sets the store's host). The router then serves /.well-known/poppy.json and
-  // /.well-known/oauth-protected-resource, accepts Auth0's agent join at /auth/login, and makes
-  // req.auth0.client.poppy.getVisitor() report who is driving.
   app.use(
     createAuth0({
       // The SDK reads AUTH0_DOMAIN, AUTH0_CLIENT_ID, AUTH0_CLIENT_SECRET, APP_BASE_URL and AUTH0_AUDIENCE (the Carts
@@ -60,30 +55,16 @@ export function createApp({ auth0 = {}, cartsApiUrl, fetch } = {}) {
       // (below), which then ends the anonymous session itself.
       anonymousSessions: { clearOnLogin: false },
       // No API scopes at login: @auth0/auth0-express has no option for them (the Next.js storefront asks for
-      // cart:write orders:read orders:write). A browser-joined agent's token from this storefront then carries none of
-      // the Carts API's scopes, and the API leaves such a token unchecked; an agent calling the API with its own token
-      // is always checked.
-      poppy: auth0.poppy ?? { config: loadPoppyConfig() },
+      // cart:write orders:read orders:write). Once you add Poppy, a browser-joined agent's token from this storefront
+      // carries none of the Carts API's scopes, so the agent has the customer's full access here: write
+      // apps/web-express/poppy.json with `--web-unscoped=true`, as poppy.example.json does. That flips once
+      // auth0-express can ask for API scopes at login.
       ...auth0,
     })
   );
 
-  // POPPY (express) 2/2 · Who is driving? An agent's browser is a guest until the customer signs it in, and then a user
-  // whose session names the agent. res.locals.agent turns on the layout's banner, and a guest's token (from the join)
-  // is what src/visitor.js sends to the Carts API for it. The API keys an agent's cart by its Poppy Session, which the
-  // token's `act` claim carries, so the cart is the same before and after sign-in.
-  app.use(async (req, res, next) => {
-    const visitor = await req.auth0.client.poppy.getVisitor();
-    const poppy = visitor.kind === 'guest' || visitor.kind === 'user' ? visitor.poppy : undefined;
-    if (poppy) {
-      res.locals.agent = {
-        url: poppy.agent.id,
-        signedIn: poppy.state === 'signed_in',
-        guestToken: visitor.kind === 'guest' ? (await req.auth0.client.poppy.getGuestAccessToken())?.accessToken : undefined,
-      };
-    }
-    next();
-  });
+  // Middleware that needs to know who is visiting goes here, after the SDK and before the routes. The layout renders
+  // a banner for res.locals.agent when one is set, and src/visitor.js uses res.locals.agent.guestToken for API calls.
 
   // A person who signs in with a guest cart: move it into the account, then end the anonymous session. People only:
   // an agent's cart is keyed by its Poppy Session, the same before and after sign-in.
@@ -226,8 +207,8 @@ export function createApp({ auth0 = {}, cartsApiUrl, fetch } = {}) {
     const code = error.cause?.code;
     console.error(`[web-express] ${req.method} ${req.path}${code ? ` (${code})` : ''}: ${error.message}`);
     if (res.headersSent) return;
-    // A refused agent login (a PoppyError, whose code is in `cause`), a bad Poppy Session (400) or an ended session
-    // (401) is the request's fault, not the server's. Anything else is a 500.
+    // A refused agent login (a PoppyError, whose code is in `cause`, once Poppy is on), a bad Poppy Session (400) or an
+    // ended session (401) is the request's fault, not the server's. Anything else is a 500.
     const status = POPPY_REFUSALS.has(code) ? 403 : Number.isInteger(error.status) && error.status >= 400 && error.status < 500 ? error.status : 500;
     res.status(status).type('text/plain').send(status === 500 ? 'Something went wrong. Head back to the store and try again.' : refusal(code, status));
   });
@@ -238,7 +219,7 @@ export function createApp({ auth0 = {}, cartsApiUrl, fetch } = {}) {
 /** The codes of the SDK's PoppyError, for a login it refuses because of Poppy. */
 const POPPY_REFUSALS = new Set(['poppy_sign_in_required', 'poppy_guest_not_supported', 'invalid_poppy_guest']);
 
-/** The text for a refused login, by the code of the SDK's PoppyError (its `cause`). */
+/** The text for a refused login, by the code of the SDK error's `cause` (a PoppyError once Poppy is on). */
 function refusal(code, status) {
   switch (code) {
     case 'poppy_sign_in_required':

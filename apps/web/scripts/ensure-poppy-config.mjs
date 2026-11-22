@@ -1,5 +1,6 @@
-// Makes sure apps/web/poppy.json exists before `next dev` (predev), `next build` (--build) and `tsc` (--typecheck).
-// lib/auth0.ts imports it and hands it to the SDK as it is. The rules live in poppy-file.mjs:
+// Makes sure apps/web/poppy.json exists before `next build` (--build), for when lib/auth0.ts imports it (step 7 of the
+// quickstart) on a host where the file isn't committed. `npm run dev` doesn't run it: locally `auth0 poppy setup` writes
+// the file, and a file written here first would be in its way. The rules live in poppy-file.mjs:
 //
 //   apps/web/poppy.json (from `auth0 poppy setup`, or written earlier)  ->  kept as it is
 //   else AUTH0_DOMAIN + AUTH0_CLIENT_ID (+ APP_BASE_URL / POPPY_DOMAIN)   ->  written, so a hosted build works

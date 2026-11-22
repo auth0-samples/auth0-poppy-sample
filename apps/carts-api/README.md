@@ -12,7 +12,7 @@
 
 | | |
 |---|---|
-| Poppy lives in | [`src/app.ts`](src/app.ts) (verify, cart key, sign-in challenge) · [`src/policy.ts`](src/policy.ts) · [`src/activity.ts`](src/activity.ts) · [`src/openapi.ts`](src/openapi.ts) |
+| Poppy lives in | [`src/app.ts`](src/app.ts) (verify, cart key, sign-in challenge) · [`src/policy.ts`](https://github.com/atko-cic/auth0-poppy-sample/blob/main/apps/carts-api/src/policy.ts) · [`src/activity.ts`](https://github.com/atko-cic/auth0-poppy-sample/blob/main/apps/carts-api/src/activity.ts) · [`src/openapi.ts`](src/openapi.ts) |
 | Serves | `/products` · `/cart` · `/orders` · `/agents` · `/activity` · `/agent-policy` · `/openapi.json` · `/health` |
 | Test agent | `POPPY_TEST_AGENT=1` mounts `/__test-agent/*`. Development only |
 | Storage | memory by default, or the included Redis adapters; interfaces in [`src/storage/`](src/storage). Activity and rate limits remain in-process |
@@ -47,15 +47,11 @@ Configuration is read from the environment, and from the repo-root `.env.local` 
 | Variable | Required | Meaning |
 |---|---|---|
 | `AUTH0_DOMAIN` | yes | Your tenant domain, such as `your-tenant.us.auth0.com`. A Session JWT's `aud` must be its issuer, `https://<domain>/`. |
-| `AUTH0_AUDIENCE` | yes | The API identifier: the `aud` of access tokens. `http://localhost:4000` locally; an https identifier such as `https://api.<your-store>` for a public store. |
-| `STOREFRONT_CLIENT_ID` | for people's tokens (`AUTH0_CLIENT_ID` locally) | The storefront's client ID. A token without a Poppy Session (a person's, or a person's guest token) is accepted only when its `client_id` or `azp` is this; any other client gets 403 `client_not_allowed`. Falls back to `AUTH0_CLIENT_ID`. |
+| `AUTH0_AUDIENCE` | yes | The API identifier: the `aud` of access tokens. |
 | `CARTS_API_URL` | no (`http://localhost:4001`) | Where this service listens. The port is taken from it. |
-| `POPPY_AGENTS` | no (the Poppy Playground) | Comma-separated client metadata URLs of the agents you accept. Unset: the Poppy Playground. Set to an empty value: no agent. The list is always passed to the SDK, which never fetches an agent that isn't on it. |
-| `POPPY_AGENT_IDS` | for linked agents | Comma-separated Auth0 agent IDs (`agt_…`) or client IDs (`tpc_…`) of agents linked to an Auth0 agent. Their Sessions arrive in the storefront token's `act` with that ID instead of a URL. Unset: none accepted. |
+| `POPPY_AGENTS` | strongly recommended | Comma-separated client metadata URLs of the agents you accept. Without it, any https agent is accepted and its metadata fetched. |
 | `PUBLIC_ORIGIN` | for real agents | The https origin agents call, when the API sits behind a tunnel or proxy, such as `https://carts.example.ngrok.app`. See [Local https](#local-https). |
-| `NODE_ENV` | `production` when deployed | `production` refuses `POPPY_TEST_AGENT`, `CARTS_API_DEV_TOOLS` and `POPPY_ALLOW_PRIVATE_AGENT_ADDRESSES`. `npm start` does not set it. |
-| `CARTS_API_DEV_TOOLS` | no | `1` opens `GET /activity` to callers with no credentials (every request) and mounts `POST /__dev/sessions/:key/end`. Off unless set, whatever `NODE_ENV` is; `npm run dev` at the repo root sets it. |
-| `POPPY_ALLOW_PRIVATE_AGENT_ADDRESSES` | no | `1` lets the SDK fetch agent metadata on localhost or private addresses. Off unless set; `npm run dev` at the repo root sets it. |
+| `NODE_ENV` | no | `production` turns off `allowPrivateAddresses` (agents on localhost or private addresses) and refuses `POPPY_TEST_AGENT`. |
 | `POPPY_TEST_AGENT` | no | `1` runs an in-process test agent (development only). See [Smoke test](#smoke-test-against-the-running-server). |
 
 Scripts:
@@ -85,7 +81,7 @@ All responses are JSON.
 | `POST /cart/items` | same | Body `{ productId, quantity }`. Adds the item or sets its quantity; `0` removes it. Returns the cart. |
 | `DELETE /cart/items/:productId` | same | Removes the item. Returns the cart. |
 | `POST /cart/merge` | a person's account token only (not a guest, not an agent) | Body `{ guestToken }`: the person's anonymous session token. Verified like a Bearer token (same audience) and required to be a person's anonymous token (guest marks, no `act`). Moves its `guest:<sub>` items into the account cart (quantities add, capped at 99), deletes the guest cart, and returns `{ merged, cartKey, items, totalCents }`. Idempotent: a second call moves nothing (`merged: 0`). A guest caller: 401. An agent (signed in or guest): 403 `forbidden`, because an agent's cart already follows it. A missing, invalid or non-guest `guestToken`: 400 `invalid_request`. |
-| `POST /orders` | signed in only: a person's token, or a signed-in Session | Takes the cart in one step and turns it into an order. 201 with `{ id, createdAt, items, totalCents, account, placedVia, poppySessionKey, payment, shipping }`. Send `Idempotency-Key: <key>` to make a retry safe: the same key and body replay the first answer (`Idempotent-Replayed: true`), another body is 422 `idempotency_key_reused`, a request still running is 409 `request_in_progress`. Signed out or guest (an agent guest or a person's anonymous token): 401, challenge naming `orders:write`. Empty cart: 409 `empty_cart`. |
+| `POST /orders` | signed in only: a person's token, or a signed-in Session | Turns the cart into an order and clears the cart. 201 with `{ id, createdAt, items, totalCents, account, placedVia, poppySessionKey }`. Signed out or guest (an agent guest or a person's anonymous token): 401, challenge naming `orders:write`. Empty cart: 409 `empty_cart`. |
 | `GET /orders` | signed in only | `{ orders }` for the account. Signed out: 401, challenge naming `orders:read`. |
 | `GET /whoami` | optional | Debug: `{ poppy, sub, scope, account, cartKey }`. `poppy` is the verified `PoppySession` (identifiers only; no JWT or token is echoed). |
 
@@ -97,7 +93,6 @@ No credentials on a cart route gives 401 with a challenge naming `openid`. Error
 | 400 | `session_ended` | The Session was ended. Start a new one. |
 | 401 | none (`WWW-Authenticate`) | Sign-in needed, or the access token failed. |
 | 403 | `insufficient_scope` | A signed-in agent's token lacks the route's scope: `cart:write` for the cart, `orders:read` for `GET /orders`, `orders:write` for `POST /orders`. The `WWW-Authenticate` challenge names it. People's tokens are not scope-checked. |
-| 403 | `client_not_allowed` | A token without a Poppy Session that the storefront doesn't hold (its `azp` is another client), or `STOREFRONT_CLIENT_ID` is unset. |
 | 503 | `temporarily_unavailable` | The agent's metadata host could not be reached. Honour `Retry-After`. |
 
 ## Calling it as an agent
@@ -148,9 +143,9 @@ The server refuses to start with `POPPY_TEST_AGENT=1` when `NODE_ENV=production`
 ## Before production
 
 - **Use a shared store.** Set `KV_REST_API_URL` and `KV_REST_API_TOKEN` (or `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN`) and `createStores()` switches to Upstash Redis (`src/storage/redis.ts`), shared by every instance. Without them it falls back to in-memory stores, which live in one process and vanish on restart. To use another database, implement `CartStore` (its `merge` must be one transaction), `OrderStore` and a `PoppySessionStore` subclass and return them from `createStores()` in `src/storage/index.ts`.
-- Set `POPPY_AGENTS`, `STOREFRONT_CLIENT_ID`, `PUBLIC_ORIGIN` and `NODE_ENV=production`, and none of the development opt-ins.
+- Set `POPPY_AGENTS`, `PUBLIC_ORIGIN` and `NODE_ENV=production`.
 - Put a rate limit in front of the routes: the SDK does not rate limit, and the first request from a new agent makes it fetch that agent's metadata.
-- The SDK keeps no replay store, so keep routes safe to repeat (setting a quantity, not adding to it), and send `Idempotency-Key` with `POST /orders`.
+- The SDK keeps no replay store, so keep routes safe to repeat (setting a quantity, not adding to it).
 
 ## The SDK dependency
 

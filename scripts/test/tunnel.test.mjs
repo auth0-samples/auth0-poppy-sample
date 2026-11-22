@@ -178,13 +178,6 @@ describe('sync', () => {
   });
 });
 
-test('warns that the public API tunnel exposes the development endpoints', async () => {
-  const r = await sync();
-  assert.match(r.stdout, /Warning: The Carts API tunnel is public\. While the API runs with CARTS_API_DEV_TOOLS=1/);
-  const json = JSON.parse((await sync('--json')).stdout);
-  assert.match(json.warning, /POST \/__test-agent\/session-jwt/);
-});
-
 describe('sync --local', () => {
   test('puts the localhost values back', async () => {
     await sync();

@@ -1,16 +1,16 @@
 import { cartsApi } from "@/lib/carts-api";
-import { getDriver } from "@/lib/poppy";
+import { getVisitor } from "@/lib/visitor";
 import { searchProducts } from "@/lib/search";
 import { ApiNotice } from "../components/ApiNotice";
 import { ProductGrid } from "../components/ProductGrid";
 
 export const metadata = { title: "Search" };
 
-/** `/search?q=<words>`: the catalog, filtered. People and agents both land here from a search. */
+/** `/search?q=<words>`: the catalog, filtered. */
 export default async function SearchPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
-  const [{ q = "" }, products, driver] = await Promise.all([searchParams, cartsApi.products(), getDriver()]);
+  const [{ q = "" }, products, visitor] = await Promise.all([searchParams, cartsApi.products(), getVisitor()]);
   const query = q.trim().slice(0, 100);
-  const cart = driver.kind === "visitor" ? undefined : await cartsApi.cart();
+  const cart = visitor.kind === "visitor" ? undefined : await cartsApi.cart();
   const inCart = new Map((cart?.ok ? cart.data.items : []).map((i) => [i.productId, i.quantity]));
   const found = products.ok ? searchProducts(products.data, query) : [];
 

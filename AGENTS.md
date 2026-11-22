@@ -4,7 +4,7 @@ Instructions for coding agents working in this repository. Start with [README.md
 
 ## Project
 
-Drift Bean Demo is an Auth0 Poppy reference app:
+Drift Bean Demo is an Auth0 Poppy reference app. This `starter` branch has the Poppy integration removed, for the [Personal Agent Protocol quickstart](https://auth0.com/docs/ai-agents-mcp/personal-agents/quickstart); the finished store is the `main` branch.
 
 - `apps/web`: Next.js App Router storefront using `@auth0/nextjs-auth0`.
 - `apps/carts-api`: Express 5 and TypeScript API using `@auth0/auth0-api-js`; runs with `tsx`.
@@ -27,12 +27,11 @@ Run from the repository root:
 | Register an agent | `auth0 agents register <url> --api <audience> --scopes <scopes> --require-dpop` |
 | Public readiness | `auth0 poppy doctor <public-host> --json` |
 | Local readiness | `npm run doctor -- --json` |
-| Run both apps | `npm run dev`, or `npm run dev:agent` with the scripted agent |
+| Run both apps | `npm run dev` |
 | Checks | `npm run check` (both app typechecks and API tests) |
-| Scripted-agent checks | `npm run demo`, `npm run smoke` (need the test-agent API running) |
 | Tunnel | `npm run tunnel` (needs ngrok) |
 
-Before completing any change, run `npm run check`. For API behavior changes, also run `npm run smoke`. Report blocked checks rather than claiming they passed.
+Before completing any change, run `npm run check`. Report blocked checks rather than claiming they passed.
 
 ## Rules
 
@@ -56,9 +55,7 @@ Before completing any change, run `npm run check`. For API behavior changes, als
 - Guest carts require anonymous sessions on the application, the API's anonymous-user policy and an anonymous client grant. Poppy setup and agent registration are distinct from this provisioning.
 - The CLI writes the protocol discovery document (`apps/web/poppy.json`); both storefronts pass it to the SDK as it is, setting only `organization.domain`. Check actual served discovery, not just the file.
 - The Next.js storefront's discovery says `web.unscoped: false` (the API applies the agent's scopes); the Express storefront's says `true`, because `@auth0/auth0-express` can't ask for API scopes at login.
-- The API takes a token without a Poppy Session as the person's only when the storefront holds it (`azp`).
 - Disconnecting a stored API session is not universal OAuth-token revocation or immediate browser logout.
-- The API's dev tools (`CARTS_API_DEV_TOOLS=1`) and private agent addresses are explicit opt-ins, never on in production.
 - `POPPY_TEST_AGENT=1` is development-only; the API must refuse it in production.
 - Storage uses memory unless configured otherwise. Do not describe the sample as a production payment or order-management system.
 

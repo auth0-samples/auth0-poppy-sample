@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Fails if a tracked file looks like it holds a secret. Runs in CI (and `node scripts/check-secrets.mjs` locally).
-// It reads the list of files from git, skips lockfiles, archives and images, and never prints the secret.
+// It reads the list of files from git, skips lockfiles, images and the vendored builds, and never prints the secret.
 //
 // What it looks for:
 //   - files that hold tenant values: .env files and the storefronts' poppy.json (the .example copies are fine)
@@ -32,7 +32,7 @@ export const SECRET_NAMES = [
 ];
 const FORBIDDEN_FILES = [/(^|\/)\.env(\..+)?$/, /(^|\/)auth0-poppy\.json$/, /^apps\/[^/]+\/poppy\.json$/];
 const ALLOWED_FILES = [/\.example$/, /(^|\/)\.env\.example$/];
-const SKIPPED_FILES = /package-lock\.json$|pnpm-lock\.yaml$|\.tgz$|\.(png|jpe?g|gif|webp|svg|ico)$/;
+const SKIPPED_FILES = /package-lock\.json$|pnpm-lock\.yaml$|\.tgz$|\.(png|jpe?g|gif|webp|svg|ico)$|^vendor\//;
 
 // NAME=value, NAME: value or "NAME": "value", where the value is at least 8 characters.
 const ASSIGNMENT = new RegExp(`(?:^|[^A-Za-z0-9_])["']?(${SECRET_NAMES.join('|')})["']?\\s*[=:]\\s*["'\`]?([^\\s"'\`<>,;]{8,})`);

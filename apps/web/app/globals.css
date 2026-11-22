@@ -227,19 +227,6 @@ h3 { font-size: 1.12rem; letter-spacing: -0.016em; }
   .order-total { align-items: flex-start; flex-direction: row-reverse; justify-content: space-between; width: 100%; }
 }
 
-/* Agents */
-.agent-list { list-style: none; margin: 0; padding: 0; }
-.agent-row { display: flex; justify-content: space-between; gap: 16px; align-items: center; padding: 18px 0; border-top: 1px solid rgb(0 0 0 / 0.08); flex-wrap: wrap; }
-.agent-row:first-child { border-top: none; padding-top: 0; }
-.agent-id { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.agent-id code { word-break: break-all; font-size: 0.88rem; }
-.agent-id .muted { font-size: 0.85rem; }
-.agent-actions { display: flex; gap: 12px; align-items: center; }
-.agent-actions .action-form { margin: 0; }
-.status { display: inline-block; font-size: 0.75rem; font-weight: 500; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
-.status-live { background: #fddccd; color: #a53400; }
-.status-ended { background: rgb(0 0 0 / 0.05); color: var(--muted); }
-.status-refused { background: var(--ink); color: var(--bg); }
 
 /* Account and debug */
 .profile { display: grid; grid-template-columns: max-content 1fr; gap: 10px 28px; margin: 0 0 32px; }
@@ -397,25 +384,10 @@ h3 { font-size: 1.12rem; letter-spacing: -0.016em; }
 .tok-string { color: #d24604; }
 .tok-number, .tok-literal { color: #d24604; }
 .debug a, .debug .eyebrow, .debug .btn-link, .debug .tok-number, .debug .tok-literal { color: #d24604; }
-.agents-page .lede a, .agents-page .lede a:hover, a.accent-orange-link, a.accent-orange-link:hover { color: #d24604; }
-.agents-page .status-live, .agent-list .status-live, .activity-table .status-live { background: #fddccd; color: #a53400; }
 .debug .copy-btn:focus-visible { outline-color: #d24604; }
 .debug .copy-btn[data-copied] { color: #d24604; box-shadow: 0 0 0 1px #d24604; }
   .debug .code-block, .debug .panel .code-block { background: rgb(255 255 255 / 0.6); }
-  .table-scroll.activity-table { background: rgb(255 255 255 / 0.6); }
 
-/* Connected agents: empty state */
-.agent-empty { display: flex; flex-direction: column; gap: 24px; }
-.agent-looking { display: flex; align-items: center; gap: 12px; margin: 0; font-size: 1.25rem; font-weight: 600; letter-spacing: -0.015em; }
-.agent-pulse { position: relative; width: 10px; height: 10px; border-radius: 999px; background: #d24604; flex: none; }
-.agent-discovery a, .agent-discovery a code { color: #d24604; }
-.agent-pulse::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: #d24604; animation: agent-ping 1.8s cubic-bezier(0, 0, 0.2, 1) infinite; }
-@keyframes agent-ping { 0% { transform: scale(1); opacity: 0.6; } 80%, 100% { transform: scale(3); opacity: 0; } }
-.agent-steps { margin: 0; padding-left: 1.25rem; display: flex; flex-direction: column; gap: 12px; line-height: 1.55; }
-.agent-steps li::marker { color: var(--muted); font-weight: 600; }
-.prompt-text { white-space: pre-wrap; word-break: break-word; }
-.agent-discovery { margin: 0; font-size: 0.9rem; overflow-wrap: anywhere; }
-@media (prefers-reduced-motion: reduce) { .agent-pulse::after { animation: none; } }
 
 /* The GitHub button in the sample banner. */
 .github-link { display: inline-flex; align-items: center; gap: 6px; color: var(--notice-fg, inherit); }

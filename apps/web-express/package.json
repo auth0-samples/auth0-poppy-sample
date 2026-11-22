@@ -12,8 +12,11 @@
     "test": "node --test test/*.test.js"
   },
   "dependencies": {
-    "@auth0/auth0-express": "1.1.0-beta.0",
-    "@auth0/auth0-server-js": "1.18.0-beta.0",
+    "@auth0/auth0-express": "file:../../vendor/auth0-auth0-express-1.0.0-poppy.a83bb24.tgz",
+    "@auth0/auth0-server-js": "file:../../vendor/auth0-auth0-server-js-1.17.0-poppy.ad054e2.tgz",
     "express": "^5.2.1"
+  },
+  "overrides": {
+    "@auth0/auth0-server-js": "$@auth0/auth0-server-js"
   }
 }

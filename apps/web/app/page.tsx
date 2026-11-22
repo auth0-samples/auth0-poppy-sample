@@ -1,15 +1,15 @@
 import { cartsApi } from "@/lib/carts-api";
 import { categoryHref } from "@/lib/format";
-import { getDriver } from "@/lib/poppy";
+import { getVisitor } from "@/lib/visitor";
 import { ApiNotice } from "./components/ApiNotice";
 import { Hero } from "./components/home/Hero";
 import { ProductGrid } from "./components/ProductGrid";
 import { FilterChips } from "./components/ui/FilterChips";
 
 export default async function CatalogPage({ searchParams }: { searchParams: Promise<{ category?: string }> }) {
-  const [{ category }, products, driver] = await Promise.all([searchParams, cartsApi.products(), getDriver()]);
+  const [{ category }, products, visitor] = await Promise.all([searchParams, cartsApi.products(), getVisitor()]);
   // A visitor has no session, so no cart to look up yet.
-  const cart = driver.kind === "visitor" ? undefined : await cartsApi.cart();
+  const cart = visitor.kind === "visitor" ? undefined : await cartsApi.cart();
   const inCart = new Map((cart?.ok ? cart.data.items : []).map((i) => [i.productId, i.quantity]));
   const all = products.ok ? products.data : [];
   const categories = [...new Set(all.map((p) => p.category).filter((c): c is string => Boolean(c)))];
@@ -23,7 +23,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
 
   return (
     <>
-      <Hero showGuestNote={driver.kind === "visitor" || driver.kind === "guest"} />
+      <Hero showGuestNote={visitor.kind === "visitor" || visitor.kind === "guest"} />
 
       <section aria-labelledby="catalog-heading" className="catalog">
         <div className="catalog-head">

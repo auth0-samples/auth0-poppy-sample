@@ -7,9 +7,6 @@ import { ANONYMOUS_SESSION_COOKIE, auth0 } from "./auth0";
  * tokens and delete the guest cookie (a Server Component can't write cookies). It does nothing, at the cost of one
  * cookie lookup, unless the browser has both a user session and an anonymous session.
  *
- * People only, never agents. A signed-in agent's cart is keyed by its Poppy Session, which is the same before and
- * after sign-in, and the SDK replaces an agent's guest cookie itself on the agent's login.
- *
  * It runs in the proxy.ts bundle, on the Node.js runtime.
  */
 
@@ -28,10 +25,6 @@ export async function mergeGuestCartOnLogin(req: NextRequest, res: NextResponse)
 
   const [session, anon] = await Promise.all([auth0.getSession(req), auth0.getAnonymousSession(req)]);
   if (!session || !anon) return;
-
-  // A person, not an agent. With a user session, auth0.poppy.getContext() reports that session's driver.
-  const poppy = await auth0.poppy.getContext(req);
-  if (poppy.kind !== "human") return;
 
   // An expired guest token can't be verified by the API, so its cart can't be reached: just end the session.
   if (anon.expiresAt <= Math.floor(Date.now() / 1000)) {
@@ -82,7 +75,7 @@ export async function mergeGuestCartOnLogin(req: NextRequest, res: NextResponse)
 }
 
 /**
- * POPPY-BETA: a server-side endAnonymousSession(req, res). The SDK ends an anonymous session only through its
+ * The SDK has no server-side endAnonymousSession(req, res): it ends an anonymous session only through its
  * POST /auth/anonymous-session/logout route (meant for the browser), so this replays that route through the SDK's
  * own handler and copies its cookie deletions (including chunks) onto the current response.
  */

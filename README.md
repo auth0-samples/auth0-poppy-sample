@@ -2,6 +2,8 @@
 
 # Auth0 Poppy reference app
 
+> **This is the `starter` branch** for the [Personal Agent Protocol quickstart](https://auth0.com/docs/ai-agents-mcp/personal-agents/quickstart). It is the same store with Auth0 login and guest carts working for people, but without the Personal Agent Protocol (Poppy) integration, so you can add it by following the quickstart. The finished store is the [`main` branch](https://github.com/atko-cic/auth0-poppy-sample/tree/main); the rest of this README and the guides in `docs/` describe it.
+
 [![CI](https://github.com/atko-cic/auth0-poppy-sample/actions/workflows/ci.yml/badge.svg)](https://github.com/atko-cic/auth0-poppy-sample/actions/workflows/ci.yml)
 [![Node](https://img.shields.io/badge/node-%3E%3D22-blue.svg?style=flat)](#run-locally)
 [![Poppy](https://img.shields.io/badge/protocol-Poppy-blue.svg?style=flat)](https://personalagentprotocol.org)
@@ -12,7 +14,7 @@ Use this repository to see the Auth0 SDK integration in a working store: browse 
 
 [Run locally](#run-locally) · [Explore the app](#explore-the-app) · [Code tour](docs/tour.md) · [Deploy and update](docs/deploy.md) · [Add Poppy to your app](docs/adopting.md)
 
-[![Deploy API to Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fatko-cic%2Fauth0-poppy-sample&root-directory=apps%2Fcarts-api&project-name=driftbean-carts-api&repository-name=driftbean-poppy-sample&env=AUTH0_DOMAIN%2CAUTH0_AUDIENCE%2CSTOREFRONT_CLIENT_ID%2CPOPPY_AGENTS&envDescription=Auth0%20tenant%20domain%2C%20API%20identifier%2C%20storefront%20client%20ID%20and%20allowed%20agent%20URLs&envLink=https%3A%2F%2Fgithub.com%2Fatko-cic%2Fauth0-poppy-sample%2Fblob%2FHEAD%2Fdocs%2Fdeploy.md%23environment)
+[![Deploy API to Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fatko-cic%2Fauth0-poppy-sample&root-directory=apps%2Fcarts-api&project-name=driftbean-carts-api&repository-name=driftbean-poppy-sample&env=AUTH0_DOMAIN%2CAUTH0_AUDIENCE%2CPOPPY_AGENTS&envDescription=Auth0%20tenant%20domain%2C%20API%20identifier%20and%20allowed%20agent%20URLs&envLink=https%3A%2F%2Fgithub.com%2Fatko-cic%2Fauth0-poppy-sample%2Fblob%2FHEAD%2Fdocs%2Fdeploy.md%23environment)
 
 **Deploy the API first, then import the same repository for the storefront.** The [deployment guide](docs/deploy.md#vercel) covers both projects and Auth0 setup. Want ongoing sample updates? [Fork and sync](docs/deploy.md#keep-your-deployment-up-to-date) instead of making a one-time copy.
 
@@ -112,7 +114,7 @@ The [code tour](docs/tour.md) follows these six marked integration points. The r
 | [`apps/carts-api/src/auth0.ts`](apps/carts-api/src/auth0.ts) | Configure request verification, allowed agents and the public API origin |
 | [`apps/carts-api/src/auth.ts`](apps/carts-api/src/auth.ts) | Verify the caller and choose its cart key |
 | [`apps/carts-api/src/app.ts`](apps/carts-api/src/app.ts) | Require customer approval at checkout and map SDK errors to HTTP responses |
-| [`apps/web/lib/poppy.ts`](apps/web/lib/poppy.ts) | Identify the visitor and select the token for API calls |
+| [`apps/web/lib/poppy.ts`](https://github.com/atko-cic/auth0-poppy-sample/blob/main/apps/web/lib/poppy.ts) | Identify the visitor and select the token for API calls |
 
 The API's central call is:
 
@@ -149,9 +151,6 @@ Run these from the repository root:
 | `npm run install:all` | Install the apps |
 | `npm run dev` | Start the storefront on 3000 and API on 4001 |
 | `npm run dev:express` | Start the [Express storefront](#express-storefront) on 3000 and API on 4001 |
-| `npm run dev:agent` | Start both with the scripted agent enabled; requires local storefront configuration |
-| `npm run demo` / `npm run smoke` | Exercise the running test-agent API |
-| `npm run agent -- <METHOD> <path>` | Send one request as the scripted agent |
 | `npm run doctor` | Check local configuration, servers and discovery |
 | `npm run tunnel` | Expose both apps through ngrok |
 | `npm run tenant` | Preview sample tenant provisioning; `--yes --write-env` applies it |
@@ -162,28 +161,23 @@ Run these from the repository root:
 [`apps/web-express`](apps/web-express) is the same store as an Express website using `@auth0/auth0-express`, against the same Carts API, tenant and `.env.local`. It is server-rendered JavaScript with no build step.
 
 ```sh
-auth0 poppy setup ... --out apps/web-express/poppy.json   # then:
 npm run dev:express      # Express storefront on http://localhost:3000, API on port 4001
 ```
 
-Run it instead of `npm run dev`: both storefronts use port 3000, so the tenant's callback URL and `npm run tunnel` work unchanged. `createAuth0({ poppy: { config } })` takes `apps/web-express/poppy.json` as the CLI writes it; [`src/poppy-config.js`](apps/web-express/src/poppy-config.js) reads it at startup and sets only `organization.domain` (from `POPPY_DOMAIN`, else `APP_BASE_URL`). Write it with `--web-unscoped=true`: `@auth0/auth0-express` can't ask for API scopes at login, so a joined agent has the customer's full access on this website. Its two integration points are marked `POPPY (express)` in [`apps/web-express/src/app.js`](apps/web-express/src/app.js).
+Run it instead of `npm run dev`: both storefronts use port 3000, so the tenant's callback URL and `npm run tunnel` work unchanged. The SDK is set up in [`apps/web-express/src/app.js`](apps/web-express/src/app.js).
 
 ## Sample boundaries
 
 - Products and orders are demonstration data. Checkout does not charge a payment method.
 - Carts, orders and sessions use memory unless shared storage is configured. Follow the [production checklist](docs/deploy.md#production-checklist) before deploying more than one instance or storing real customer data.
 - Customer-only account changes are refused for every agent. Disconnecting an API session does not revoke all issued tokens or browser cookies: the agent can start a new Session without a new approval while its tokens are valid.
-- Test-agent mode and the API's dev tools (`CARTS_API_DEV_TOOLS`) are development-only and off unless set. The API refuses to start with them when `NODE_ENV=production`.
 - `npm run dev` and the scripts run on macOS, Linux and Windows. The shell snippets in the docs use macOS and Linux syntax.
+- Test-agent mode is development-only. The API refuses to start it with `NODE_ENV=production`.
 
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). Coding agents can use [AGENTS.md](AGENTS.md) and the [task prompts](docs/prompts.md).
 
 For a setup or integration problem, [open an issue](https://github.com/atko-cic/auth0-poppy-sample/issues/new/choose) with the failing step and redacted diagnostic output. Report vulnerabilities through [SECURITY.md](SECURITY.md), not a public issue.
-
-## License
-
-Copyright 2026 Okta, Inc. Licensed under the [Apache License 2.0](LICENSE).
 
 <sub>Auth0 and Okta are trademarks of Okta, Inc. Drift Bean Demo is a fictional store.</sub>

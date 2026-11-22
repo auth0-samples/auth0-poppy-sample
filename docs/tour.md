@@ -15,7 +15,7 @@ This tour follows one agent through the store, in the order its requests hit the
 | 3 | [`apps/carts-api/src/auth.ts`](../apps/carts-api/src/auth.ts) | Works out who is calling, and keys their cart |
 | 4 | [`apps/carts-api/src/app.ts`](../apps/carts-api/src/app.ts) (`POST /orders`) | Sends a signed-out agent to the customer for approval |
 | 5 | [`apps/carts-api/src/app.ts`](../apps/carts-api/src/app.ts) (error handler) | Turns SDK errors into the responses agents expect |
-| 6 | [`apps/web/lib/poppy.ts`](../apps/web/lib/poppy.ts) | Tells the storefront who is driving, so pages show the right thing |
+| 6 | [`apps/web/lib/poppy.ts`](https://github.com/atko-cic/auth0-poppy-sample/blob/main/apps/web/lib/poppy.ts) | Tells the storefront who is driving, so pages show the right thing |
 
 Your product pages don't change. An agent shops through your API, not your HTML.
 
@@ -51,7 +51,7 @@ poppy: {
 }
 ```
 
-The `agents` list is your allow list. A header from an agent that isn't on it is refused before the API fetches anything. Always pass it: an empty list refuses every agent, while leaving `agents` out accepts any. `publicOrigin` has to match what the agent signed, because the signature covers the exact URL. Behind a proxy or tunnel, set it explicitly.
+The `agents` list is your allow list. A header from an agent that isn't on it is refused before the API fetches anything. `publicOrigin` has to match what the agent signed, because the signature covers the exact URL. Behind a proxy or tunnel, set it explicitly.
 
 ## 3. The caller: who is this?
 
@@ -68,8 +68,6 @@ It returns three kinds of caller:
 - **A person with an account token.** The cart is keyed by the account.
 
 The account is `claims.sub` only when the session is signed in. A guest agent's token has a `sub` too, but it's a hash, not a customer.
-
-A token without a Session is the person only when the storefront holds it: its `azp` (or `client_id`) must be the storefront's client ID, or the API answers 403. A Session carried in the storefront token's `act` must come from an allowed agent too: its URL in `POPPY_AGENTS`, or, for an agent linked to an Auth0 agent, its agent ID in `POPPY_AGENT_IDS`.
 
 Try it. Two session IDs give two carts, and the same ID gives the same cart:
 
@@ -100,7 +98,7 @@ npm run agent -- POST /orders --sid red
 
 The payment is simulated: the store pays with a test card, no money moves, and the order records `payment` (status, last four digits, a `sim_` reference). Send `{"payment":{"card":"4000 0000 0000 0002"}}` to see a declined card: the API answers `402 card_declined` and keeps the cart.
 
-After approval the same route goes on to check the agent's scope (a `403 insufficient_scope` naming it if it's missing; people are not scope-checked), the store's order limit, and then records the order with `placedVia`, the agent's metadata URL. Send an `Idempotency-Key` header and a retry gets the first answer instead of a second order. Customers see that on `/orders`. The scripted agent can't sign in as a customer, so for the second half use a [real agent](testing.md).
+After approval the same route goes on to check the agent's scope (a `403 insufficient_scope` naming it if it's missing; people are not scope-checked), the store's order limit, and then records the order with `placedVia`, the agent's metadata URL. Customers see that on `/orders`. The scripted agent can't sign in as a customer, so for the second half use a [real agent](testing.md).
 
 ## 5. Errors: what the agent sees when it's refused
 
@@ -121,7 +119,7 @@ npm run agent -- GET /cart --defect expired_delegation --sid red
 # 400 invalid_session: "The delegation has expired."
 ```
 
-`--defect` accepts the other faults listed in [`test-agent-mode.ts`](../apps/carts-api/src/dev/test-agent-mode.ts).
+`--defect` accepts the other faults listed in [`test-agent-mode.ts`](https://github.com/atko-cic/auth0-poppy-sample/blob/main/apps/carts-api/src/dev/test-agent-mode.ts).
 
 ## 6. The storefront: who is driving?
 
@@ -135,23 +133,12 @@ Pages and server actions call `getDriver()` instead of the SDK. The cart badge, 
 
 Open `/debug` in the running storefront to see what the SDK reports for your current session.
 
-## The Express storefront
-
-[`apps/web-express`](../apps/web-express) is the same store as an Express website, with `@auth0/auth0-express` in place of the Next.js SDK. It shares steps 2 to 5 (the API) and replaces steps 1 and 6 with two marks in [`src/app.js`](../apps/web-express/src/app.js), found with `grep -rn "POPPY (express)" apps/web-express`:
-
-| # | What it does |
-|---|---|
-| 1/2 | `createAuth0({ poppy: { config } })` takes `apps/web-express/poppy.json` as `auth0 poppy setup` writes it (read by `src/poppy-config.js`, which sets only `organization.domain`), serves the discovery files, accepts the agent's browser at `/auth/login`, and turns on `req.auth0.client.poppy.getVisitor()` |
-| 2/2 | A middleware sets `res.locals.agent` from `getVisitor()`: the layout's "Shopping via" banner, and a guest agent's token for the Carts API |
-
-Run it with `npm run dev:express`. A guest agent is refused on `/orders` by `requiresAuth()`, which answers a guest instead of sending it to log in.
-
 ## Beyond the six
 
 Not part of the protocol, but worth copying:
 
-- [`policy.ts`](../apps/carts-api/src/policy.ts): per-agent rate limit and order limit, served to agents at `GET /agent-policy`.
-- [`activity.ts`](../apps/carts-api/src/activity.ts): a log of agent requests, and the customer's list of connected agents with a disconnect button at `/agents`. Disconnect ends that Session; it doesn't revoke the agent's tokens or approval.
+- [`policy.ts`](https://github.com/atko-cic/auth0-poppy-sample/blob/main/apps/carts-api/src/policy.ts): per-agent rate limit and order limit, served to agents at `GET /agent-policy`.
+- [`activity.ts`](https://github.com/atko-cic/auth0-poppy-sample/blob/main/apps/carts-api/src/activity.ts): a log of agent requests, and the customer's list of connected agents with a disconnect button at `/agents`.
 - [`openapi.ts`](../apps/carts-api/src/openapi.ts): an OpenAPI document at `GET /openapi.json`, so agents learn your routes.
 
 Next: [break it on purpose](labs.md), or [take it to your app](adopting.md).

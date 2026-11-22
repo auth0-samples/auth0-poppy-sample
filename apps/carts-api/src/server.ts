@@ -5,14 +5,14 @@ loadRootEnv();
 
 // Imported after the env file loads, because building the app reads the configuration.
 const { buildApp } = await import('./bootstrap.js');
-const { app, config, agents } = await buildApp();
+const { app, config } = await buildApp();
 
 app.listen(config.port, (error?: Error) => {
   if (error) {
     throw error;
   }
   console.log(
-    `carts-api listening on ${config.baseUrl}: audience ${config.audience}, ${agents.length} registered agent(s)` +
+    `carts-api listening on ${config.baseUrl}: audience ${config.audience}` +
       (config.publicOrigin ? `, public origin ${config.publicOrigin}` : '')
   );
 });

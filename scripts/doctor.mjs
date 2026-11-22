@@ -17,8 +17,7 @@
 //   --json            env DOCTOR_JSON
 //
 // It reads .env (written by `auth0 quickstarts setup`) and .env.local (written by `npm run setup`; it overrides .env). Real
-// environment variables win over both. The Poppy config is apps/web/poppy.json, from `auth0 poppy setup` or written from
-// .env when the storefront starts. Secrets are never printed: variables are listed by name only,
+// environment variables win over both. The Poppy config is apps/web/poppy.json, written by `auth0 poppy setup`. Secrets are never printed: variables are listed by name only,
 // and the anonymous token the tenant returns is checked for presence and then dropped.
 
 import { existsSync, readFileSync } from 'node:fs';
@@ -36,7 +35,7 @@ export const STORE_SCOPES = ['cart:write', 'orders:read', 'orders:write'];
 const TIMEOUT_MS = 5000;
 const SYMBOL = { pass: '✓', warn: '!', fail: '✗', skip: '-' };
 const SETUP_FIX = 'Run auth0 quickstarts setup --app --api --type regular --framework nextjs --name "Drift Bean Storefront" --identifier http://localhost:4000 --scopes "cart:write,orders:read,orders:write" --offline-access (it writes .env), or npm run setup (it writes .env.local), or copy .env.example to .env.local and fill it in.';
-const POPPY_FIX = 'Run auth0 poppy setup ... --out apps/web/poppy.json, or set AUTH0_DOMAIN and AUTH0_CLIENT_ID so the storefront writes it when it starts (npm run dev), or npm run setup.';
+const POPPY_FIX = 'Run auth0 poppy setup ... --out apps/web/poppy.json (docs/tenant-setup.md).';
 const POPPY_SETUP_FIX = 'Run auth0 poppy setup --company-domain <store host> --api <AUTH0_AUDIENCE> --app <client id> --dry-run, review the plan, then run it again without --dry-run (docs/tenant-setup.md#4-enable-poppy-for-a-public-store).';
 const TENANT_FIX = 'npm run tenant -- --yes (dry run first, without --yes)';
 
@@ -103,7 +102,7 @@ export function resolveOptions(argv, env) {
   };
 }
 
-const HELP = readFileSync(fileURLToPath(import.meta.url), 'utf8').split('\n').slice(1, 22).join('\n').replace(/^\/\/ ?/gm, '');
+const HELP = readFileSync(fileURLToPath(import.meta.url), 'utf8').split('\n').slice(1, 21).join('\n').replace(/^\/\/ ?/gm, '');
 
 export async function run({ argv, env, root, stdout = process.stdout, stderr = process.stderr, nodeVersion = process.versions.node }) {
   const wantsJson = argv.includes('--json') || truthy(env.DOCTOR_JSON);
@@ -171,8 +170,7 @@ export async function run({ argv, env, root, stdout = process.stdout, stderr = p
   const configFile = 'apps/web/poppy.json';
   let config;
   if (!existsSync(configPath)) {
-    if (e.AUTH0_DOMAIN && e.AUTH0_CLIENT_ID) add('config.file', 'warn', 'apps/web/poppy.json does not exist yet; the storefront writes it from AUTH0_DOMAIN and AUTH0_CLIENT_ID when it starts', 'Start the storefront (npm run dev), or run auth0 poppy setup ... --out apps/web/poppy.json.');
-    else add('config.file', 'fail', 'apps/web has no Poppy config: poppy.json does not exist, and AUTH0_DOMAIN / AUTH0_CLIENT_ID are not set to write one', POPPY_FIX);
+    add('config.file', 'warn', 'apps/web/poppy.json does not exist yet; the store runs without Poppy until auth0 poppy setup writes it', POPPY_FIX);
   } else {
     try {
       const doc = JSON.parse(readFileSync(configPath, 'utf8'));
@@ -189,10 +187,10 @@ export async function run({ argv, env, root, stdout = process.stdout, stderr = p
     const endpoint = String(config.web?.browser_session_endpoint ?? '');
     if (!issuer) add('config.issuer', 'skip', 'Poppy config auth.issuer: not compared, AUTH0_DOMAIN is not set');
     else if (fileIssuer === issuer) add('config.issuer', 'pass', `Poppy config auth.issuer is ${issuer}`);
-    else add('config.issuer', 'fail', `Poppy config auth.issuer is ${JSON.stringify(fileIssuer)}, expected ${issuer} (with the trailing slash)`, `Rerun auth0 poppy setup for this tenant (or npm run setup -- --force), or fix auth.issuer in ${configFile}.`);
+    else add('config.issuer', 'fail', `Poppy config auth.issuer is ${JSON.stringify(fileIssuer)}, expected ${issuer} (with the trailing slash)`, `Rerun auth0 poppy setup for this tenant, or fix auth.issuer in ${configFile}.`);
     if (!e.AUTH0_CLIENT_ID) add('config.session-endpoint', 'skip', 'Poppy config web.browser_session_endpoint: not compared, AUTH0_CLIENT_ID is not set');
     else if (endpoint.includes(e.AUTH0_CLIENT_ID)) add('config.session-endpoint', 'pass', 'Poppy config web.browser_session_endpoint contains the client ID');
-    else add('config.session-endpoint', 'fail', 'Poppy config web.browser_session_endpoint does not contain AUTH0_CLIENT_ID', `Rerun auth0 poppy setup with this app (or npm run setup -- --force), or fix web.browser_session_endpoint in ${configFile}.`);
+    else add('config.session-endpoint', 'fail', 'Poppy config web.browser_session_endpoint does not contain AUTH0_CLIENT_ID', `Rerun auth0 poppy setup with this app, or fix web.browser_session_endpoint in ${configFile}.`);
   }
 
   // The domain agents see: POPPY_DOMAIN, else the file's, else APP_BASE_URL's host, as in apps/web/lib/auth0.ts
@@ -209,7 +207,7 @@ export async function run({ argv, env, root, stdout = process.stdout, stderr = p
     if (oidc.error || oidc.status !== 200 || !isObject(oidc.json)) {
       add('tenant.openid', 'fail', `Tenant ${domain} did not return its OpenID configuration (${oidc.error ? oidc.detail : `HTTP ${oidc.status}`})`, `Check AUTH0_DOMAIN (${domain}) and your network.`);
     } else if (oidc.json.issuer !== issuer) {
-      add('tenant.openid', 'fail', `Tenant issuer is ${oidc.json.issuer}, expected ${issuer}`, 'Set AUTH0_DOMAIN to the domain agents will see (a custom domain changes the issuer), then rerun auth0 poppy setup (or npm run setup -- --force).');
+      add('tenant.openid', 'fail', `Tenant issuer is ${oidc.json.issuer}, expected ${issuer}`, 'Set AUTH0_DOMAIN to the domain agents will see (a custom domain changes the issuer), then rerun auth0 poppy setup.');
     } else {
       add('tenant.openid', 'pass', `Tenant ${domain} answers and its issuer matches`);
     }
@@ -299,7 +297,7 @@ export async function run({ argv, env, root, stdout = process.stdout, stderr = p
       const problems = [];
       if (doc.protocol_version !== '1.0') problems.push(`protocol_version is ${JSON.stringify(doc.protocol_version)}, expected "1.0"`);
       if (issuer && doc.auth?.issuer !== issuer) problems.push(`auth.issuer is ${JSON.stringify(doc.auth?.issuer)}, expected ${issuer}`);
-      if (problems.length) add('web.poppy-json', 'fail', `/.well-known/poppy.json: ${problems.join('; ')}`, 'Rewrite apps/web/poppy.json (auth0 poppy config ... --out apps/web/poppy.json, or npm run setup -- --force) and restart the storefront.');
+      if (problems.length) add('web.poppy-json', 'fail', `/.well-known/poppy.json: ${problems.join('; ')}`, 'Rewrite apps/web/poppy.json (auth0 poppy config ... --out apps/web/poppy.json) and restart the storefront.');
       else add('web.poppy-json', 'pass', '/.well-known/poppy.json is protocol 1.0 and its issuer matches');
     }
 

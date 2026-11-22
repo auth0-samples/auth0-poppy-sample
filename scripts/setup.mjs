@@ -1,29 +1,24 @@
 #!/usr/bin/env node
-// Writes the two local config files from your tenant's values, so you don't copy and edit them by hand:
-//
-//   .env.local                   both apps read it
-//   apps/web/poppy.json          the storefront's Poppy discovery document (protocol 1.0, the shape `auth0 poppy setup` writes)
+// Writes .env.local, which both apps read, from your tenant's values, so you don't copy and edit it by hand. The Poppy
+// discovery document (apps/web/poppy.json) is written by `auth0 poppy setup` when you add Poppy.
 //
 //   AUTH0_CLIENT_SECRET=... node scripts/setup.mjs --domain your-tenant.auth0.com --client-id ...
 //   node scripts/setup.mjs --domain your-tenant.auth0.com --client-id ... --client-secret-stdin < secret.txt
 //
-// The client secret comes from the AUTH0_CLIENT_SECRET environment variable, from standard input with
-// --client-secret-stdin, or, when .env.local already exists, from that file: never from a flag, which would land in
-// your shell history and the process list.
+// The client secret comes from the AUTH0_CLIENT_SECRET environment variable or, with --client-secret-stdin, from
+// standard input, or from an existing .env.local: never from a flag, which would land in your shell history and the
+// process list.
 //
-// Options: --audience (default http://localhost:4000), --agent <cimd url> (repeatable), --store-domain (the store's
-// public host; default: none, so the storefront uses APP_BASE_URL's host), --name (default Drift Bean Demo), --force to
-// overwrite, --dry-run to print without writing.
+// Options: --audience (default http://localhost:4000), --agent <cimd url> (repeatable), --force to overwrite, --dry-run
+// to print without writing.
 //
-// It does not change your tenant. It prints the tenant-side steps at the end. A poppy.json from `auth0 poppy setup` is
-// kept unless you pass --force; one that still holds the example's placeholders is replaced.
+// It does not change your tenant. It prints the tenant-side steps at the end.
 
 import { randomBytes } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs, parseEnv } from 'node:util';
-import { configFromEnv, isPlaceholder } from '../apps/web/scripts/poppy-file.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -38,8 +33,6 @@ try {
       'client-secret-stdin': { type: 'boolean', default: false },
       audience: { type: 'string', default: 'http://localhost:4000' },
       agent: { type: 'string', multiple: true, default: ['https://poppyplayground.dev/agent.json'] },
-      'store-domain': { type: 'string' },
-      name: { type: 'string', default: 'Drift Bean Demo' },
       force: { type: 'boolean', default: false },
       'dry-run': { type: 'boolean', default: false },
       help: { type: 'boolean', default: false },
@@ -51,7 +44,7 @@ try {
 }
 
 if (values.help) {
-  console.log(readFileSync(fileURLToPath(import.meta.url), 'utf8').split('\n').slice(1, 19).join('\n').replace(/^\/\/ ?/gm, ''));
+  console.log(readFileSync(fileURLToPath(import.meta.url), 'utf8').split('\n').slice(1, 15).join('\n').replace(/^\/\/ ?/gm, ''));
   process.exit(0);
 }
 
@@ -70,7 +63,6 @@ function clientSecret() {
   return '';
 }
 const secret = clientSecret();
-
 const missing = [
   !values.domain && '--domain',
   !values['client-id'] && '--client-id',
@@ -100,26 +92,8 @@ const env = [
   '',
 ].join('\n');
 
-// The same document the storefront writes from .env when there is none (apps/web/scripts/poppy-file.mjs). The store's
-// host stays empty unless --store-domain names it: the storefront then uses APP_BASE_URL's (localhost:3000).
-const example = JSON.parse(readFileSync(join(root, 'apps/web/poppy.example.json'), 'utf8'));
-const poppy = configFromEnv(
-  { ...example, organization: { ...example.organization, name: values.name } },
-  { AUTH0_DOMAIN: domain, AUTH0_CLIENT_ID: clientId, POPPY_DOMAIN: values['store-domain'] ?? '' }
-);
-const poppyPath = join(root, 'apps/web/poppy.json');
-/** A poppy.json that still holds the example's placeholders is replaced; one from the CLI is kept without --force. */
-const replaceable = (path) => {
-  try {
-    return isPlaceholder(JSON.parse(readFileSync(path, 'utf8')));
-  } catch {
-    return false;
-  }
-};
-
 const files = [
-  { path: envPath, content: env, secret: true },
-  { path: poppyPath, content: `${JSON.stringify(poppy, null, 2)}\n`, secret: false, replaceable: replaceable(poppyPath) },
+  { path: join(root, '.env.local'), content: env, secret: true },
 ];
 
 for (const file of files) {
@@ -129,7 +103,7 @@ for (const file of files) {
     console.log(file.secret ? file.content.replace(/^(AUTH0_CLIENT_SECRET|AUTH0_SECRET)=.*$/gm, '$1=<hidden>') : file.content);
     continue;
   }
-  if (existsSync(file.path) && !values.force && !file.replaceable) {
+  if (existsSync(file.path) && !values.force) {
     console.log(`skip  ${shown} (exists; pass --force to overwrite)`);
     continue;
   }

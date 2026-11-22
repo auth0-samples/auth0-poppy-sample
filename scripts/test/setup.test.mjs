@@ -1,5 +1,5 @@
 // Tests for scripts/setup.mjs in a scratch copy of the repository layout: the secret never comes from a flag, and it
-// writes a protocol 1.0 poppy.json without replacing one from the CLI.
+// leaves apps/web/poppy.json to `auth0 poppy setup`.
 //
 //   node --test "scripts/test/*.test.mjs"
 
@@ -39,34 +39,13 @@ test('--client-secret is refused, and nothing is written', () => {
   assert.ok(!existsSync(join(tmp, '.env.local')));
 });
 
-test('reads the secret from AUTH0_CLIENT_SECRET or stdin, and writes a 1.0 poppy.json', () => {
+test('reads the secret from AUTH0_CLIENT_SECRET or stdin, and writes no poppy.json', () => {
   for (const [args, env, input] of [[[], { AUTH0_CLIENT_SECRET: SECRET }], [['--client-secret-stdin'], {}, `${SECRET}\n`]]) {
     rmSync(join(tmp, '.env.local'), { force: true });
-    rmSync(join(tmp, 'apps/web/poppy.json'), { force: true });
     const r = setup(args, env, input);
     assert.equal(r.status, 0, r.stderr);
     assert.doesNotMatch(r.stdout + r.stderr, new RegExp(SECRET));
     assert.match(readFileSync(join(tmp, '.env.local'), 'utf8'), new RegExp(`^AUTH0_CLIENT_SECRET=${SECRET}$`, 'm'));
-    const poppy = JSON.parse(readFileSync(join(tmp, 'apps/web/poppy.json'), 'utf8'));
-    assert.equal(poppy.protocol_version, '1.0');
-    assert.equal(poppy.auth.issuer, 'https://tenant.example.com/');
-    assert.equal(poppy.web.browser_session_endpoint, 'https://tenant.example.com/poppy/CLIENT/browser-session');
-    assert.ok(poppy.auth.scopes['poppy:browser-sign-in'], 'the browser sign-in scope is described');
+    assert.ok(!existsSync(join(tmp, 'apps/web/poppy.json')), 'auth0 poppy setup writes it');
   }
-});
-
-test("keeps the CLI's poppy.json unless --force", () => {
-  writeFileSync(join(tmp, 'apps/web/poppy.json'), '{"protocol_version":"1.0","from":"cli"}\n');
-  assert.equal(setup([], { AUTH0_CLIENT_SECRET: SECRET }).status, 0);
-  assert.match(readFileSync(join(tmp, 'apps/web/poppy.json'), 'utf8'), /"from":"cli"/);
-  assert.equal(setup(['--force'], { AUTH0_CLIENT_SECRET: SECRET }).status, 0);
-  assert.doesNotMatch(readFileSync(join(tmp, 'apps/web/poppy.json'), 'utf8'), /"from":"cli"/);
-});
-
-test('takes the secret from an existing .env.local when it rewrites it with --force', () => {
-  writeFileSync(join(tmp, '.env.local'), `AUTH0_CLIENT_SECRET=${SECRET}\n`);
-  const forced = setup(['--force']);
-  assert.equal(forced.status, 0, forced.stderr);
-  assert.doesNotMatch(forced.stdout + forced.stderr, new RegExp(SECRET));
-  assert.match(readFileSync(join(tmp, '.env.local'), 'utf8'), new RegExp(`^AUTH0_CLIENT_SECRET=${SECRET}$`, 'm'));
 });

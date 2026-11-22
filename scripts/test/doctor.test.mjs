@@ -176,7 +176,7 @@ describe('doctor against fake servers', () => {
     const { code, out } = await exec();
     assert.equal(code, 1);
     assert.match(out, /^✗ Poppy config auth\.issuer is /m);
-    assert.match(out, /FIX: Rerun auth0 poppy setup .*npm run setup -- --force/);
+    assert.match(out, /FIX: Rerun auth0 poppy setup for this tenant/);
   });
 
   test('a config session endpoint without the client ID fails', async () => {
@@ -235,15 +235,10 @@ describe('doctor against fake servers', () => {
     assert.match(result.out, /^✗ apps\/web\/poppy\.json still holds the example's placeholders/m);
   });
 
-  test('no poppy.json yet is a warning when the storefront can write it from .env, else a failure', async () => {
+  test('no poppy.json yet is a warning that points at auth0 poppy setup', async () => {
     rmSync(join(tmp, 'apps/web/poppy.json'));
-    let result = await exec();
-    assert.match(result.out, /^! apps\/web\/poppy\.json does not exist yet; the storefront writes it/m);
-    const env = baseEnv();
-    delete env.AUTH0_CLIENT_ID;
-    result = await exec([], env);
-    assert.equal(result.code, 1);
-    assert.match(result.out, /^✗ apps\/web has no Poppy config/m);
+    const result = await exec();
+    assert.match(result.out, /^! apps\/web\/poppy\.json does not exist yet; the store runs without Poppy/m);
     assert.match(result.out, /FIX: Run auth0 poppy setup/);
   });
 

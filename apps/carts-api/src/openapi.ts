@@ -1,13 +1,13 @@
 import { CATEGORIES } from './catalog.js';
-import { SCOPES } from './auth.js';
+import { SCOPES } from './accounts.js';
 import { MAX_QUANTITY } from './storage/index.js';
 
-// The OpenAPI 3.1 document agents read to learn the API. The storefront lists it in `/.well-known/poppy.json` under
-// `apis`, and `auth0 poppy setup --api-url` and doctor check D7 expect it.
+// The OpenAPI 3.1 document clients read to learn the API, at `GET /openapi.json`. `auth0 poppy setup --api-url`
+// points at it, so the storefront's discovery document can list it under `apis`.
 
 const error = { $ref: '#/components/schemas/Error' };
 const errorResponse = (description: string) => ({ description, content: { 'application/json': { schema: error } } });
-const poppySecurity = [{ poppySession: [] }, { poppySession: [], bearer: [] }];
+const bearerSecurity = [{ bearer: [] }];
 
 export function openApiDocument(publicUrl: string) {
   return {
@@ -16,18 +16,12 @@ export function openApiDocument(publicUrl: string) {
       title: 'Drift Bean Demo Carts API',
       version: '0.1.0',
       description:
-        'Cart and checkout for the Drift Bean Demo coffee store. Agents call it with a Poppy-Session header. Browse and cart work as a guest; orders need the User to sign the agent in. Read GET /agent-policy for the rules.',
+        'Cart and checkout for the Drift Bean Demo coffee store. Browsing needs no token. The cart works with a guest (anonymous session) token or an account token; orders need an account token.',
     },
     servers: [{ url: publicUrl }],
     components: {
       securitySchemes: {
-        poppySession: {
-          type: 'apiKey',
-          in: 'header',
-          name: 'Poppy-Session',
-          description: 'A Session JWT signed with the key Auth0 delegated to the agent. Sign htm and htu for each request. Send Poppy-Version: 1.0 with it.',
-        },
-        bearer: { type: 'http', scheme: 'bearer', description: 'An Auth0 access token for this API (DPoP-bound for agents).' },
+        bearer: { type: 'http', scheme: 'bearer', description: 'An Auth0 access token for this API.' },
       },
       schemas: {
         Error: {
@@ -73,7 +67,7 @@ export function openApiDocument(publicUrl: string) {
             createdAt: { type: 'string', format: 'date-time' },
             items: { type: 'array', items: { $ref: '#/components/schemas/CartLine' } },
             totalCents: { type: 'integer' },
-            placedVia: { type: ['string', 'null'], description: 'The client metadata URL of the agent that placed it.' },
+            placedVia: { type: ['string', 'null'], description: 'Who placed it for the customer, or null when the customer did.' },
           },
         },
       },
@@ -114,15 +108,11 @@ export function openApiDocument(publicUrl: string) {
         get: {
           operationId: 'getCart',
           summary: 'Read the cart',
-          description:
-            'Works as a guest. The cart follows the agent Session into the account when the User signs it in. Signed in, the agent needs cart:write.',
-          'x-poppy-scope': SCOPES.cartWrite,
-          security: poppySecurity,
+          description: 'Works with a guest token. POST /cart/merge moves a guest cart into the account at sign-in.',
+          security: bearerSecurity,
           responses: {
             200: { description: 'The cart.', content: { 'application/json': { schema: { $ref: '#/components/schemas/Cart' } } } },
-            400: errorResponse('invalid_session or session_ended.'),
-            403: errorResponse('insufficient_scope: a signed-in agent without cart:write.'),
-            429: errorResponse('rate_limited. Wait Retry-After seconds.'),
+            401: errorResponse('No token, or an invalid or expired one.'),
           },
         },
       },
@@ -130,9 +120,8 @@ export function openApiDocument(publicUrl: string) {
         post: {
           operationId: 'setCartItem',
           summary: 'Set the quantity of a product in the cart',
-          description: 'Sets (not adds) the quantity, so a retried request is safe. Quantity 0 removes the line. Signed in, the agent needs cart:write.',
-          'x-poppy-scope': SCOPES.cartWrite,
-          security: poppySecurity,
+          description: 'Sets (not adds) the quantity, so a retried request is safe. Quantity 0 removes the line.',
+          security: bearerSecurity,
           requestBody: {
             required: true,
             content: {
@@ -147,7 +136,7 @@ export function openApiDocument(publicUrl: string) {
           },
           responses: {
             200: { description: 'The cart.', content: { 'application/json': { schema: { $ref: '#/components/schemas/Cart' } } } },
-            400: errorResponse('Unknown product, bad quantity, or an invalid Session.'),
+            400: errorResponse('Unknown product or bad quantity.'),
           },
         },
       },
@@ -155,7 +144,7 @@ export function openApiDocument(publicUrl: string) {
         delete: {
           operationId: 'removeCartItem',
           summary: 'Remove a product from the cart',
-          security: poppySecurity,
+          security: bearerSecurity,
           parameters: [{ name: 'productId', in: 'path', required: true, schema: { type: 'string' } }],
           responses: { 200: { description: 'The cart.', content: { 'application/json': { schema: { $ref: '#/components/schemas/Cart' } } } } },
         },
@@ -164,8 +153,7 @@ export function openApiDocument(publicUrl: string) {
         get: {
           operationId: 'listOrders',
           summary: 'List the account orders',
-          security: poppySecurity,
-          'x-poppy-scope': SCOPES.ordersRead,
+          security: bearerSecurity,
           responses: {
             200: {
               description: 'The orders.',
@@ -175,17 +163,15 @@ export function openApiDocument(publicUrl: string) {
                 },
               },
             },
-            401: errorResponse(`Signed out. WWW-Authenticate names scope ${SCOPES.ordersRead}: sign the User in with it.`),
-            403: errorResponse('insufficient_scope: a signed-in agent without orders:read.'),
+            401: errorResponse(`Signed out or a guest. WWW-Authenticate names scope ${SCOPES.ordersRead}: sign the customer in with it.`),
           },
         },
         post: {
           operationId: 'placeOrder',
           summary: 'Check out the cart',
           description:
-            'Needs the User to sign the agent in. As a guest the API answers 401 with the scope to ask for. Checkout asks for no address and no saved card: the order ships to a sample address and the payment is simulated, so no money moves. The body is optional; send {"payment":{"card":"4000 0000 0000 0002"}} to see a declined card.',
-          security: poppySecurity,
-          'x-poppy-scope': SCOPES.ordersWrite,
+            'Needs the customer signed in. As a guest the API answers 401 with the scope to ask for. Checkout asks for no address and no saved card: the order ships to a sample address and the payment is simulated, so no money moves. The body is optional; send {"payment":{"card":"4000 0000 0000 0002"}} to see a declined card.',
+          security: bearerSecurity,
           requestBody: {
             required: false,
             content: { 'application/json': { schema: { type: 'object', properties: { payment: { type: 'object', properties: { card: { type: 'string', description: 'A test card number. Defaults to 4242 4242 4242 4242 (approved).' } } } } } } },
@@ -193,14 +179,10 @@ export function openApiDocument(publicUrl: string) {
           responses: {
             402: errorResponse('card_declined or invalid_card. The cart is kept.'),
             201: { description: 'The order.', content: { 'application/json': { schema: { $ref: '#/components/schemas/Order' } } } },
-            401: errorResponse(`Signed out. WWW-Authenticate names scope ${SCOPES.ordersWrite}.`),
-            403: errorResponse('insufficient_scope, or policy_denied (over the agent order limit).'),
+            401: errorResponse(`Signed out or a guest. WWW-Authenticate names scope ${SCOPES.ordersWrite}.`),
             409: errorResponse('empty_cart.'),
           },
         },
-      },
-      '/agent-policy': {
-        get: { operationId: 'getAgentPolicy', summary: 'What agents may do here', responses: { 200: { description: 'The policy.' } } },
       },
     },
   };

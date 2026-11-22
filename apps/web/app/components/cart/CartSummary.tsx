@@ -1,10 +1,7 @@
 import Link from "next/link";
 import { formatPrice } from "@/lib/format";
 
-const GUEST_NOTES = {
-  guest: "Shopping as a guest. Sign in at checkout and your cart comes with you.",
-  agent_guest: "You're shopping as an agent guest. Checkout needs the customer's approval."
-};
+const GUEST_NOTE = "Shopping as a guest. Sign in at checkout and your cart comes with you.";
 
 export function CartSummary({
   count,
@@ -13,7 +10,7 @@ export function CartSummary({
 }: {
   count: number;
   totalCents: number;
-  guest?: keyof typeof GUEST_NOTES;
+  guest?: boolean;
 }) {
   return (
     <aside className="summary" aria-label="Order summary">
@@ -28,7 +25,7 @@ export function CartSummary({
           <dd>{formatPrice(totalCents)}</dd>
         </div>
       </dl>
-      {guest && <p className="summary-note">{GUEST_NOTES[guest]}</p>}
+      {guest && <p className="summary-note">{GUEST_NOTE}</p>}
       <Link href="/checkout" className="btn btn-primary">
         Check out
       </Link>

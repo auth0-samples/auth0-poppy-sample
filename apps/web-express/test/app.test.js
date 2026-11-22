@@ -2,36 +2,15 @@
 //
 //   npm --prefix apps/web-express test
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { after, before, describe, test } from 'node:test';
 import express from 'express';
 import { createApp } from '../src/app.js';
-import { loadPoppyConfig } from '../src/poppy-config.js';
 import * as views from '../src/views.js';
 
 const PRODUCTS = [
   { id: 'beans-konga', name: 'Konga Natural, Yirgacheffe', priceCents: 2800, category: 'Beans', images: ['/products/beans-konga-1.png'], description: 'Blueberry.' },
   { id: 'scale-tare', name: 'Tare Brew Scale', priceCents: 14900, category: 'Accessories', images: [], description: 'A scale.' },
 ];
-
-/** poppy.example.json for the placeholder tenant, read through src/poppy-config.js as the app reads poppy.json. */
-function examplePoppyConfig(env = { APP_BASE_URL: 'http://localhost:3000' }) {
-  const dir = mkdtempSync(join(tmpdir(), 'driftbean-poppy-'));
-  try {
-    const file = join(dir, 'poppy.json');
-    writeFileSync(
-      file,
-      readFileSync(new URL('../poppy.example.json', import.meta.url), 'utf8')
-        .replaceAll('YOUR_TENANT_DOMAIN', 'example.us.auth0.com')
-        .replaceAll('YOUR_WEB_APP_CLIENT_ID', 'test-client-id')
-    );
-    return loadPoppyConfig({ file, env });
-  } finally {
-    rmSync(dir, { recursive: true, force: true });
-  }
-}
 
 // The options the SDK would read from .env.local. Placeholders: no request reaches this tenant.
 export const AUTH0_TEST_OPTIONS = {
@@ -41,8 +20,6 @@ export const AUTH0_TEST_OPTIONS = {
   appBaseUrl: 'http://localhost:3000',
   sessionSecret: 'test-session-secret-at-least-32-characters-long',
   audience: 'http://localhost:4000',
-  // Poppy: the example poppy.json for this placeholder tenant, passed as `config`, so no file is read.
-  poppy: { config: examplePoppyConfig() },
 };
 
 const listen = (app) =>
@@ -140,41 +117,6 @@ describe('pages with a stub Carts API', () => {
     const photo = await store.get('/products/beans-konga-1.png');
     assert.equal(photo.status, 200);
     assert.match(photo.headers.get('content-type'), /image\/png/);
-  });
-});
-
-describe('Poppy discovery', () => {
-  test('serves /.well-known/poppy.json and oauth-protected-resource from the config', async () => {
-    const store = await startStore();
-    try {
-      const res = await store.get('/.well-known/poppy.json');
-      assert.equal(res.status, 200);
-      const doc = await res.json();
-      assert.equal(doc.protocol_version, '1.0');
-      assert.equal(doc.organization.name, 'Drift Bean Demo');
-      assert.equal(doc.organization.domain, 'localhost:3000');
-      assert.equal(doc.auth.issuer, 'https://example.us.auth0.com/');
-      assert.equal(doc.web.browser_session_endpoint, 'https://example.us.auth0.com/poppy/test-client-id/browser-session');
-      const resource = await (await store.get('/.well-known/oauth-protected-resource')).json();
-      assert.equal(resource.resource, 'https://localhost:3000');
-    } finally {
-      store.server.close();
-    }
-  });
-});
-
-describe('src/poppy-config.js', () => {
-  test('passes poppy.json through and sets only organization.domain: POPPY_DOMAIN, else the file, else APP_BASE_URL', () => {
-    const local = examplePoppyConfig({ APP_BASE_URL: 'http://localhost:3100' });
-    assert.equal(local.organization.domain, 'localhost:3100');
-    assert.equal(local.web.unscoped, true, "auth0-express can't ask for API scopes, so a joined agent has full access");
-    assert.deepEqual(Object.keys(local.auth.scopes), ['cart:write', 'orders:read', 'orders:write', 'poppy:browser-sign-in']);
-    assert.equal(examplePoppyConfig({ APP_BASE_URL: 'https://shop.example' }).organization.domain, 'shop.example');
-    assert.equal(examplePoppyConfig({ APP_BASE_URL: 'http://localhost:3000', POPPY_DOMAIN: 'tunnel.example' }).organization.domain, 'tunnel.example');
-  });
-
-  test('a missing file is a startup error with a FIX line', () => {
-    assert.throws(() => loadPoppyConfig({ file: join(tmpdir(), 'no-such-dir', 'poppy.json'), env: {} }), /poppy\.json does not exist\.\nFIX: auth0 poppy setup/);
   });
 });
 

@@ -44,14 +44,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 priority
               />
               <p>
-                A reference app for{" "}
+                The starter store for the{" "}
                 <a
-                  href="https://poppyplayground.dev"
+                  href="https://auth0.com/docs/ai-agents-mcp/personal-agents/quickstart"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="sample-notice-link"
                 >
-                  Poppy (Personal Agent Protocol)
+                  Personal Agent Protocol quickstart
                   <svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M3.5 8.5l5-5M4.5 3.5h4v4" />
                   </svg>
@@ -62,7 +62,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             </div>
             <nav className="footer-nav" aria-label="Developer">
               <Link href="/debug">Debug</Link>
-              <a href="/.well-known/poppy.json">poppy.json</a>
               <a
                 href="https://github.com/auth0-samples/auth0-poppy-sample"
                 target="_blank"

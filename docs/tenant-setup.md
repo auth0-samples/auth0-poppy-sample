@@ -29,7 +29,7 @@ This creates the API and Regular Web Application, links them, and writes `.env`.
 
 The API **identifier** is `http://localhost:4000`. It is a token audience, not the address of the running server. The API listens on port **4001**.
 
-`http://localhost:4000` is fine for local testing. For anything beyond that, create the API with an https identifier such as `https://api.<your-store>` (and set `AUTH0_AUDIENCE` to it): the storefront publishes the identifier as a Poppy protected resource, and the Poppy specification requires https URLs there, so a spec-following agent may refuse an http one. An identifier can't be changed after the API is created.
+`http://localhost:4000` is fine for local testing. For anything beyond that, create the API with an https identifier such as `https://api.<your-store>` (and set `AUTH0_AUDIENCE` to it): Poppy publishes the identifier as a protected resource, and the Poppy specification requires https URLs there. An identifier can't be changed after the API is created.
 
 ## 3. Enable guest carts and write local configuration
 
@@ -40,7 +40,7 @@ npm run tenant
 npm run tenant -- --yes --write-env
 ```
 
-It writes `.env.local` and `apps/web/poppy.json` (from the example, until `auth0 poppy setup` writes the real one; a file the CLI wrote is kept). With no `--store-url`, it allows `http://localhost:3000` for callbacks, logout and web origins; with a store URL it adds localhost only when you also pass `--local`. It does not enable browser joins unless you pass `--poppy`. Afterwards, inspect the result with the CLI:
+It writes `.env.local`. `auth0 poppy setup` writes the storefront's Poppy configuration (`apps/web/poppy.json`) later. It does not enable browser joins unless you pass `--poppy`. Afterwards, inspect the result with the CLI:
 
 ```sh
 auth0 apps show <storefront-client-id> --json    # anonymous_sessions.active is true
@@ -57,10 +57,7 @@ The required guest-cart settings are:
 
 These are distinct from agent registration. A visitor's anonymous session is not an agent session.
 
-Two API settings in the plan are deliberate:
-
-- **`skip_consent_for_verifiable_first_party_clients: true`.** An agent's browser join ends in a prompt-less login to the storefront. Without skip-consent, a customer's first storefront login needs a consent screen, and Auth0 refuses the join with "Prompts are not allowed for an impersonated session". It applies only to first-party clients such as the storefront; agents still get the consent screen.
-- **`subject_type_authorization.user.policy: "allow_all"`.** The storefront gets user tokens for the API without a per-user grant. In a shared tenant that lets any first-party app get a user token for this API too, so the Carts API takes a token without a Poppy Session as the customer's only when its `azp` is the storefront's client ID (`STOREFRONT_CLIENT_ID`, else `AUTH0_CLIENT_ID`), and answers 403 to every other client.
+The plan also sets `skip_consent_for_verifiable_first_party_clients: true` on the API, on purpose. An agent's browser join ends in a prompt-less login to the storefront. Without skip-consent, a customer's first storefront login needs a consent screen, and Auth0 refuses the join with "Prompts are not allowed for an impersonated session". It applies only to first-party clients such as the storefront; agents still get the consent screen.
 
 ```sh
 npm run dev
@@ -93,8 +90,6 @@ Review the plan, then repeat the command without `--dry-run`. It asks for confir
 
 Setup configures tenant metadata, Poppy on the API (`use_for_personal_agent_protocol`), the API's anonymous-user policy, the browser join on the application (`allow_personal_agent_browser_join` and its `session_transfer` settings: the browser's session cookie as the transfer method, and delegated access bound to the device), and its Initiate Login URI. It adds `poppy:browser-sign-in` to the API's scopes, writes `apps/web/poppy.json`, and runs the doctor. The storefront imports that file and hands it to the SDK as it is; only `organization.domain` is replaced, by `POPPY_DOMAIN` when set. For the Express storefront, pass `--out apps/web-express/poppy.json --web-unscoped=true`: `@auth0/auth0-express` can't ask for API scopes at login, so the API can't limit an agent joined through it, and its discovery says so.
 
-`npm run tenant -- --poppy` only sets `allow_personal_agent_browser_join` on the application, for a tenant where the rest is already configured; it does not replace `auth0 poppy setup`. To check what setup configured, run `npm run doctor -- --tenant-settings`: it reads the application's `session_transfer` and the API's `use_for_personal_agent_protocol` through your CLI login and changes nothing.
-
 `--web-unscoped=false` describes this sample's scope-checked API calls and customer-only account actions; browser sign-in alone does not grant unrestricted account access. `--always-issue-refresh-tokens=false` leaves the post-login flow unchanged. Set it to `true` only if you want the CLI to create, deploy and bind the tenant-wide Action that issues refresh tokens to Poppy agents. Review that change separately; it needs `read:actions`, `create:actions` and `update:actions`.
 
 Add the public callback, logout and web-origin URLs to the application:
@@ -106,7 +101,7 @@ auth0 apps update <storefront-client-id> \
   --web-origins "http://localhost:3000,https://store.example.com"
 ```
 
-These flags replace the corresponding URL lists. Preserve any other URLs the application already uses, and drop `http://localhost:3000` from a production application. Or let the provisioner merge them: `npm run tenant -- --store-url https://store.example.com` (add `--local` to keep localhost). When a host goes away, such as a stopped tunnel, remove it with `npm run tenant -- --remove-store-url https://old-host.example --yes`: a stale host in the logout list is a redirect target for whoever gets that host next. Set `APP_BASE_URL` to the public store URL and `PUBLIC_ORIGIN` to the public API origin, then restart both apps.
+These flags replace the corresponding URL lists. Preserve any other URLs the application already uses. Set `APP_BASE_URL` to the public store URL and `PUBLIC_ORIGIN` to the public API origin, then restart both apps.
 
 ## 5. Register an agent
 
@@ -122,10 +117,6 @@ auth0 agents register https://poppyplayground.dev/agent.json \
 ```
 
 Registration reads the agent's public metadata, creates or updates its application and agent record, and grants the selected scopes. Re-run it to synchronize rotated keys. Also include the metadata URL in the API's `POPPY_AGENTS` environment variable and restart the API; tenant registration and the API allow list are separate controls.
-
-When an agent is linked to an Auth0 agent, a Session it carries through the storefront's token names it by its Auth0 agent ID (`act.sub`, `agt_…`) and client ID (`act.client_id`, `tpc_…`), not by its metadata URL. List either one in `POPPY_AGENT_IDS` to accept it; any linked agent not listed is refused, even one registered on the tenant.
-
-`npm run tenant -- --register-agents` does the same for each `--agent`: it allows DPoP on the API, registers the agent with `require_proof_of_possession`, and grants `--agent-scopes` (default `cart:write,orders:read,orders:write`; add `poppy:browser-sign-in` for an agent that joins the website signed in).
 
 ```sh
 auth0 agents list --poppy
@@ -147,13 +138,13 @@ When your public hosts change, repeat step 4, update the application's URL lists
 | Flag | Purpose |
 |---|---|
 | `--yes` | Apply the plan; omitted means dry run |
-| `--write-env` | Write `.env.local` with restricted permissions, and `apps/web/poppy.json` when it is missing |
+| `--write-env` | Write `.env.local` with restricted permissions |
 | `--domain <tenant>` | Select a tenant rather than the CLI's active one |
 | `--store-url https://store.example.com` | Include this store's callback, logout and web-origin URLs; repeatable |
 | `--remove-store-url https://old.example` | Remove this store's URLs (a stopped tunnel), and its Initiate Login URI; repeatable |
 | `--local` | Also allow `http://localhost:3000`; the default when no `--store-url` is given |
-| `--poppy` | Set `allow_personal_agent_browser_join` on the application (not the rest of `auth0 poppy setup`) |
-| `--register-agents` | Register each `--agent` with DPoP required, and grant it `--agent-scopes` |
+| `--register-agents` | Register each `--agent` with DPoP required, and grant it `--agent-scopes` (default `cart:write,orders:read,orders:write`) |
+| `--poppy` | Set `allow_personal_agent_browser_join` on the application (not the rest of `auth0 poppy setup`); `npm run doctor -- --tenant-settings` reads what `auth0 poppy setup` configured |
 | `--json` | Machine-readable output |
 
 For CI, the provisioner also accepts `AUTH0_MGMT_DOMAIN`, `AUTH0_MGMT_CLIENT_ID` and `AUTH0_MGMT_CLIENT_SECRET` from your secret store. The secret is read from the environment only; there is no flag for it, so it never lands in shell history or the process list. Its Management API application needs:

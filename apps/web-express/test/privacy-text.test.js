@@ -1,5 +1,5 @@
 // The privacy page exists twice: apps/web/app/privacy/page.tsx (Next.js) and views.privacy() here. This test reads the
-// text of both, paragraph by paragraph, and fails when they differ in anything but the differences listed below.
+// text of both, paragraph by paragraph, and fails when they differ in anything but the difference listed below.
 //
 //   npm --prefix apps/web-express test
 import assert from 'node:assert/strict';
@@ -66,16 +66,13 @@ test('the Next.js and Express privacy pages say the same thing', () => {
   const next = nextText();
   const express = readMarkup(String(privacy()), (text) => text);
 
-  // Intended differences. Express has no Agents page, so it keeps only the paragraph's last sentences.
-  const agents = next.blocks.findIndex((block) => block.startsWith('On the Agents page'));
-  assert.notEqual(agents, -1, 'the Next.js page no longer mentions the Agents page; update this test');
-  next.blocks[agents] = next.blocks[agents].slice(next.blocks[agents].indexOf('In Redis,'));
-  // Express may run on any host, so its Hosting line names none; the Next.js storefront is deployed to Vercel.
+  // The intended difference: Express may run on any host, so its Hosting line names none; the Next.js storefront is
+  // deployed to Vercel.
   const hosting = (blocks) => blocks.findIndex((block) => block.startsWith('Hosting.'));
   assert.match(next.blocks[hosting(next.blocks)], /Vercel/);
   assert.doesNotMatch(express.blocks[hosting(express.blocks)], /Vercel/);
   express.blocks[hosting(express.blocks)] = next.blocks[hosting(next.blocks)];
-  const nextHrefs = next.hrefs.filter((href) => href !== '/agents' && href !== 'https://vercel.com/legal/privacy-policy');
+  const nextHrefs = next.hrefs.filter((href) => href !== 'https://vercel.com/legal/privacy-policy');
 
   assert.deepEqual(express.blocks, next.blocks);
   assert.deepEqual(express.hrefs, nextHrefs);

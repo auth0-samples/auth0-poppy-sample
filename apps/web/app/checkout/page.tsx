@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { cartsApi } from "@/lib/carts-api";
 import { formatPrice } from "@/lib/format";
-import { getDriver } from "@/lib/poppy";
+import { getVisitor } from "@/lib/visitor";
 import { ApiNotice } from "../components/ApiNotice";
 import { EmptyCart } from "../components/cart/EmptyCart";
 import { toRows } from "../components/cart/rows";
@@ -11,16 +11,12 @@ import { PageHeader } from "../components/ui/PageHeader";
 
 export const metadata = { title: "Checkout" };
 
-const NOTES = {
-  guest: "Shopping as a guest. Sign in to place the order, and your cart comes with you.",
-  agent_guest:
-    "Nothing else is missing. The customer has not signed this agent in yet, so Place order asks for their approval first."
-};
+const GUEST_NOTE = "Shopping as a guest. Sign in to place the order, and your cart comes with you.";
 
-/** The checkout step: review the items, pick a saved address and test card, place the order. People and agents use it alike. */
+/** The checkout step: review the items, pick a saved address and test card, place the order. */
 export default async function CheckoutPage() {
-  const driver = await getDriver();
-  if (driver.kind === "visitor") {
+  const visitor = await getVisitor();
+  if (visitor.kind === "visitor") {
     return (
       <>
         <PageHeader title="Checkout" />
@@ -49,7 +45,6 @@ export default async function CheckoutPage() {
     );
   }
   const total = formatPrice(rows.reduce((n, r) => n + r.line, 0));
-  const guest = driver.kind === "guest" || driver.kind === "agent_guest" ? driver.kind : undefined;
 
   return (
     <>
@@ -74,7 +69,7 @@ export default async function CheckoutPage() {
         </section>
         <aside className="summary" aria-label="Shipping, payment and place order">
           <PlaceOrderForm total={total} />
-          {guest && <div className="summary-note">{NOTES[guest]}</div>}
+          {visitor.kind === "guest" && <div className="summary-note">{GUEST_NOTE}</div>}
           <div className="summary-note checkout-back">
             No money moves and nothing ships. <Link href="/cart">Back to cart</Link>
           </div>

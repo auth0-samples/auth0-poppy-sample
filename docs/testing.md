@@ -33,12 +33,8 @@ On Windows PowerShell:
 ```powershell
 $env:AUTH0_DOMAIN="example.us.auth0.com"
 $env:AUTH0_AUDIENCE="http://localhost:4000"
-$env:POPPY_TEST_AGENT="1"
-$env:CARTS_API_DEV_TOOLS="1"
-npm --prefix apps/carts-api run dev
+npm --prefix apps/carts-api run dev:test-agent
 ```
-
-`dev:test-agent` sets `POPPY_TEST_AGENT=1` and `CARTS_API_DEV_TOOLS=1` (the open `GET /activity` and `POST /__dev/sessions/:key/end` that `npm run demo` reads); PowerShell sets them by hand.
 
 The scripted agent signs real `Poppy-Session` headers. In another terminal at the repository root:
 
@@ -48,7 +44,7 @@ npm run smoke
 npm test
 ```
 
-The demo exercises guest carts, sign-in challenges and rejected requests. Smoke runs eight pass/fail checks; the unit tests need no running server. If you have already configured the storefront, `npm run dev:agent` starts both apps with the scripted agent enabled. The API refuses test-agent mode, and its dev tools, when `NODE_ENV=production`.
+The demo exercises guest carts, sign-in challenges and rejected requests. Smoke runs eight pass/fail checks; the unit tests need no running server. If you have already configured the storefront, `npm run dev:agent` starts both apps with the scripted agent enabled. The API refuses test-agent mode when `NODE_ENV=production`.
 
 <img src="assets/agent-demo.png" alt="Scripted agent output showing a guest cart, a checkout sign-in challenge and rejected sessions." width="100%">
 
@@ -106,8 +102,6 @@ npm run tunnel        # terminal 2: starts ngrok, then updates .env.local with t
 
 `npm run tunnel` sets `APP_BASE_URL`, `POPPY_DOMAIN` and `PUBLIC_ORIGIN` to your tunnel hosts, makes sure the Playground's agent is in `POPPY_AGENTS`, and prints what to change on the tenant. Restart `npm run dev` afterwards.
 
-**The tunnel exposes the API's development endpoints.** `npm run dev` starts the API with `CARTS_API_DEV_TOOLS=1`, so anyone with the API tunnel's URL can read `GET /activity` (every request, with agent and account identifiers) and end Sessions with `POST /__dev/sessions/:key/end`. With `npm run dev:agent`, `POST /__test-agent/session-jwt` also signs Session JWTs for them. Stop the tunnel when you're done, or start the API with `CARTS_API_DEV_TOOLS=0` while it is up.
-
 Prefer to run ngrok yourself? Start tunnels for ports 3000 and 4001 (`ngrok http 3000`, `ngrok http 4001`), then run `npm run tunnel -- sync` to update `.env.local` from them. `npm run tunnel -- sync --local` puts localhost back and prints the `npm run tenant -- --remove-store-url <tunnel> --yes` command that takes the tunnel's URLs off the tenant again.
 
 Tip: reserve a free static domain in the ngrok dashboard so the URL doesn't change on every run, and put it in `.ngrok.yml`.
@@ -140,7 +134,7 @@ Then:
 6. **Join again:** the banner now reads *signed in as you*, and the guest cart is still there.
 7. **Check out:** the order appears under `/orders` with *placed via https://poppyplayground.dev/agent.json*.
 8. **Try an account change** on `/account`: it's refused, because agents can't change account details.
-9. Open **`/agents`** to see the agent acting for you and disconnect it, and **`/debug`** to see what the SDK reports. Disconnecting ends that Session: its next request with it gets `session_ended`. The agent can start a new Session, and while its tokens are valid it is signed in again without a new approval.
+9. Open **`/agents`** to see the agent acting for you and disconnect it, and **`/debug`** to see what the SDK reports.
 
 If a step fails, [troubleshooting.md](troubleshooting.md) maps the error to the fix.
 

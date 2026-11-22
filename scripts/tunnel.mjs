@@ -21,10 +21,6 @@
 // It prints the tenant settings you must change by hand (or `npm run tenant -- --store-url ... --yes` does), and with
 // --local the command that removes the tunnel's URLs from the tenant again (`npm run tenant -- --remove-store-url ...`).
 //
-// The API tunnel is public. With the API's development tools on (CARTS_API_DEV_TOOLS=1, which `npm run dev` sets),
-// anyone with the URL can read GET /activity and end Sessions; with `npm run dev:agent`, they can also have the test
-// agent sign Session JWTs. Stop the tunnel when you are done, or start the API with CARTS_API_DEV_TOOLS=0.
-//
 // Exit codes: 0 ok, 1 a problem (ngrok missing or not running, a tunnel missing, no env file), 2 bad usage.
 // Secrets are never printed: only the four URL-valued keys above are shown.
 
@@ -39,8 +35,6 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const PLAYGROUND = 'https://poppyplayground.dev/agent.json';
 const USAGE = 'Usage: node scripts/tunnel.mjs [start | sync [--local]] [--inspect-port <port>] [--env <file>] [--web-port <port>] [--api-port <port>] [--dry-run] [--json]';
 const MARKER = '# Public tunnel, set by `npm run tunnel`. Put localhost back with: npm run tunnel -- sync --local';
-const DEV_ENDPOINTS_WARNING =
-  'The Carts API tunnel is public. While the API runs with CARTS_API_DEV_TOOLS=1 (npm run dev sets it), anyone with its URL can read GET /activity and end Sessions with POST /__dev/sessions/:key/end; with npm run dev:agent, POST /__test-agent/session-jwt signs Session JWTs for them too. Stop the tunnel when you are done, or start the API with CARTS_API_DEV_TOOLS=0.';
 
 let parsed;
 try {
@@ -66,7 +60,7 @@ try {
 const { values: args, positionals } = parsed;
 
 if (args.help) {
-  console.log(readFileSync(fileURLToPath(import.meta.url), 'utf8').split('\n').slice(1, 30).join('\n').replace(/^\/\/ ?/gm, ''));
+  console.log(readFileSync(fileURLToPath(import.meta.url), 'utf8').split('\n').slice(1, 26).join('\n').replace(/^\/\/ ?/gm, ''));
   process.exit(0);
 }
 
@@ -273,7 +267,7 @@ function report(r) {
         previous: r.before,
         agentAdded: r.agentAdded,
         unchanged: ['CARTS_API_URL'],
-        ...(checklist ? { tenant: checklist.json, tenantCommand: checklist.command, warning: DEV_ENDPOINTS_WARNING } : {}),
+        ...(checklist ? { tenant: checklist.json, tenantCommand: checklist.command } : {}),
         ...(r.removeCommand ? { tenantCommand: r.removeCommand } : {}),
         next: 'restart npm run dev so the apps read the new values',
       })
@@ -298,8 +292,6 @@ Do this on your tenant, on the storefront application:
 
 Or let the script do it:
   ${checklist.command}
-
-Warning: ${DEV_ENDPOINTS_WARNING}
 `);
   } else if (r.removeCommand) {
     console.log(`\nThe tenant still allows the tunnel's URLs. Remove them (dry run first, without --yes):\n  ${r.removeCommand}\n`);

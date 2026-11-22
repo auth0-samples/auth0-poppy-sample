@@ -1,4 +1,4 @@
-import { getDriver } from "@/lib/poppy";
+import { getVisitor } from "@/lib/visitor";
 import { ActionForm } from "../components/ActionForm";
 import { Notice } from "../components/ui/Notice";
 import { PageHeader } from "../components/ui/PageHeader";
@@ -6,17 +6,9 @@ import { Panel } from "../components/ui/Panel";
 import { updateDisplayName } from "../actions";
 
 export default async function AccountPage() {
-  const driver = await getDriver();
+  const visitor = await getVisitor();
 
-  if (driver.kind === "agent_guest") {
-    return (
-      <>
-        <PageHeader title="Account" />
-        <Notice>An agent guest has no account here. The customer has to approve the agent first.</Notice>
-      </>
-    );
-  }
-  if (driver.kind === "visitor" || driver.kind === "guest") {
+  if (visitor.kind === "visitor" || visitor.kind === "guest") {
     return (
       <>
         <PageHeader title="Account" />
@@ -25,13 +17,13 @@ export default async function AccountPage() {
     );
   }
 
-  const { user } = driver.session;
+  const { user } = visitor.session;
   return (
     <>
       <PageHeader title="Account" />
       <dl className="profile">
         <dt>Name</dt>
-        <dd>{driver.name}</dd>
+        <dd>{visitor.name}</dd>
         <dt>Email</dt>
         <dd>{(user.email as string | undefined) ?? "None on file"}</dd>
         <dt>Auth0 user ID</dt>
@@ -41,13 +33,10 @@ export default async function AccountPage() {
       </dl>
 
       <Panel id="display-name-heading" title="Update display name">
-        {driver.kind === "agent_signed_in" && (
-          <p className="muted">{"You're signed in as an agent. Account changes are for the customer only."}</p>
-        )}
         <ActionForm action={updateDisplayName} label="Save" pendingLabel="Saving…">
           <label className="field">
             <span>Display name</span>
-            <input name="name" defaultValue={driver.name} maxLength={60} required />
+            <input name="name" defaultValue={visitor.name} maxLength={60} required />
           </label>
         </ActionForm>
       </Panel>

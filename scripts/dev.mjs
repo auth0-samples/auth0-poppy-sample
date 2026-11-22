@@ -2,12 +2,10 @@
 // Runs the Carts API and the storefront together, with one prefixed log.
 //
 //   npm run dev                  both apps
-//   npm run dev:agent            the same, with the API in test-agent mode (so `npm run demo` and `npm run smoke` work)
 //   npm run dev:express          both apps, with the Express storefront (apps/web-express) instead of apps/web
 //   npm run dev -- --api-port 4101 --web-port 3100
 //
 // Options (env fallback in brackets):
-//   --agent              run the API with POPPY_TEST_AGENT=1 [POPPY_TEST_AGENT=1]
 //   --api-port <port>    the Carts API port [API_PORT, else the port of CARTS_API_URL, else 4001]
 //   --web-port <port>    the storefront port [WEB_PORT, else 3000]
 //   --express            run apps/web-express (Express, @auth0/auth0-express) as the storefront
@@ -20,15 +18,11 @@
 // It never kills a process it did not start: a busy port is reported with its PID and left alone.
 // It runs on macOS, Linux and Windows.
 //
-// The API runs with its development tools on (CARTS_API_DEV_TOOLS=1: an open GET /activity, POST /__dev/sessions)
-// and with agents on private addresses allowed (POPPY_ALLOW_PRIVATE_AGENT_ADDRESSES=1). Set either to 0 to turn it off.
-// Neither is on for `npm start` or a deployment.
-//
 // Configuration it reads (real environment variables win over both files; .env.local wins over .env):
 //   .env          written by `auth0 quickstarts setup`
-//   .env.local    written by `npm run setup` / `npm run tenant`
-//   apps/web/poppy.json (from `auth0 poppy setup`, else written from .env by apps/web/scripts/ensure-poppy-config.mjs)
-//   with --express: apps/web-express/poppy.json (from `auth0 poppy setup`)
+//   .env.local    written by `npm run tenant -- --yes --write-env` (or `npm run setup`)
+//   apps/web/poppy.json, once `auth0 poppy setup` writes it (optional: the starter runs without it)
+//   with --express: apps/web-express/poppy.json, the same way
 
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
@@ -41,13 +35,12 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const windows = process.platform === 'win32';
 // On Windows `npm` is npm.cmd, which only a shell can run.
 const npmOptions = windows ? { shell: true } : {};
-const USAGE = 'Usage: node scripts/dev.mjs [--agent] [--express] [--api-port <port>] [--web-port <port>] [--no-install] [--ready-timeout <s>] [--json]';
+const USAGE = 'Usage: node scripts/dev.mjs [--express] [--api-port <port>] [--web-port <port>] [--no-install] [--ready-timeout <s>] [--json]';
 
 let args;
 try {
   args = parseArgs({
     options: {
-      agent: { type: 'boolean', default: false },
       'api-port': { type: 'string' },
       'web-port': { type: 'string' },
       express: { type: 'boolean', default: false },
@@ -63,7 +56,7 @@ try {
 }
 
 if (args.help) {
-  console.log(readFileSync(fileURLToPath(import.meta.url), 'utf8').split('\n').slice(1, 32).join('\n').replace(/^\/\/ ?/gm, ''));
+  console.log(readFileSync(fileURLToPath(import.meta.url), 'utf8').split('\n').slice(1, 26).join('\n').replace(/^\/\/ ?/gm, ''));
   process.exit(0);
 }
 
@@ -96,13 +89,10 @@ const envFiles = ['.env', '.env.local'].map((name) => join(root, name));
 // The storefront: apps/web (Next.js), or apps/web-express with --express.
 const express = args.express;
 const webApp = express ? 'web-express' : 'web';
-const poppyFile = join(root, 'apps', webApp, 'poppy.json');
 // .env first, so .env.local overrides it.
 const fileEnv = Object.assign({}, ...envFiles.map((file) => (existsSync(file) ? parseEnv(readFileSync(file, 'utf8')) : {})));
-const SETUP_FIX = 'auth0 quickstarts setup --app --api --type regular --framework nextjs --name "Drift Bean Storefront" --identifier http://localhost:4000 --scopes "cart:write,orders:read,orders:write" --offline-access (or npm run setup)';
-const POPPY_FIX = `auth0 poppy setup ... --out apps/${webApp}/poppy.json${express ? ', or copy apps/web-express/poppy.example.json and fill in your tenant' : ' (or npm run setup)'}`;
-
-const agentMode = args.agent || process.env.POPPY_TEST_AGENT === '1';
+const SETUP_FIX = 'npm run tenant -- --yes --write-env (or auth0 quickstarts setup --app --api --type regular --framework nextjs --name "Drift Bean Storefront" --identifier http://localhost:4000 --scopes "cart:write,orders:read,orders:write" --offline-access)';
+const POPPY_FIX = `auth0 poppy setup ... --out apps/${webApp}/poppy.json${express ? '' : ' (or npm run setup)'}`;
 
 function portOfUrl(value) {
   try {
@@ -142,10 +132,6 @@ if (!envFiles.some((file) => existsSync(file))) {
     });
   }
 }
-// apps/web/poppy.json is written from .env when it is missing (below), so only the Express storefront needs it first.
-if (express && !existsSync(poppyFile)) {
-  problems.push({ message: 'apps/web-express has no Poppy config: poppy.json does not exist.', fix: POPPY_FIX });
-}
 if (problems.length) {
   for (const p of problems) {
     console.error(p.message);
@@ -165,14 +151,6 @@ for (const app of ['carts-api', webApp]) {
   if (result.status !== 0) {
     fail(`npm install failed for apps/${app}.`, `npm --prefix apps/${app} install, and read the error above`);
   }
-}
-
-// The storefront imports apps/web/poppy.json. Write it from .env now if the CLI hasn't (`npm exec next dev` below doesn't
-// run the app's dev script). Run with the unmodified environment, so the file keeps the store's own domain; a
-// non-default --web-port reaches the app through POPPY_DOMAIN instead (see webEnv below).
-if (!express) {
-  const result = spawnSync(process.execPath, ['apps/web/scripts/ensure-poppy-config.mjs'], { cwd: root, stdio: ['ignore', json ? 2 : 'inherit', 'inherit'], env: process.env });
-  if (result.status !== 0) fail('Could not prepare the storefront\'s Poppy config (apps/web/poppy.json); see the message above.', POPPY_FIX);
 }
 
 /** PIDs listening on `port`, or undefined when `lsof` isn't available (Windows). */
@@ -213,14 +191,8 @@ const childEnv = { ...process.env };
 if (color) childEnv.FORCE_COLOR = '1';
 // The storefront calls the API at CARTS_API_URL, and the API listens on the port in it, so both must agree.
 if (apiPort !== defaultApiPort) childEnv.CARTS_API_URL = apiUrl;
-if (agentMode) childEnv.POPPY_TEST_AGENT = '1';
-else delete childEnv.POPPY_TEST_AGENT;
 
 const apiEnv = { ...childEnv };
-// Development opt-ins for the API, off everywhere else. An explicit value (0 included) in the environment or .env wins.
-for (const name of ['CARTS_API_DEV_TOOLS', 'POPPY_ALLOW_PRIVATE_AGENT_ADDRESSES']) {
-  apiEnv[name] = process.env[name] ?? fileEnv[name] ?? '1';
-}
 const webEnv = { ...childEnv };
 // A tunnel sets APP_BASE_URL in .env.local; only override it for a non-default local port.
 if (webPort !== 3000) {
@@ -233,7 +205,7 @@ const apps = [
   {
     tag: 'api',
     paint: '36',
-    command: ['npm', '--prefix', 'apps/carts-api', 'run', agentMode ? 'dev:test-agent' : 'dev'],
+    command: ['npm', '--prefix', 'apps/carts-api', 'run', 'dev'],
     env: apiEnv,
   },
   {
@@ -248,7 +220,7 @@ const apps = [
 ];
 
 if (express) {
-  // src/poppy-config.js reads apps/web-express/poppy.json and takes the host from POPPY_DOMAIN or APP_BASE_URL. PORT is its port.
+  // From apps/web-express, because `poppy: true` reads poppy.json from the working directory. PORT is its port.
   Object.assign(apps[1], {
     command: [process.execPath, '--watch-path=src', 'src/server.js'],
     cwd: join(root, 'apps/web-express'),
@@ -376,19 +348,16 @@ if (apiPort !== defaultApiPort) ports.push(`CARTS_API_URL=${apiUrl}`);
 if (webPort !== 3000) ports.push(`STOREFRONT_URL=${webUrl}`);
 if (json) {
   console.log(
-    JSON.stringify({ ok: true, event: 'ready', api: apiUrl, web: webUrl, agentMode, webStatus: state.web, env: ports, commands: agentMode ? ['npm run doctor', 'npm run demo', 'npm run smoke'] : ['npm run doctor'] })
+    JSON.stringify({ ok: true, event: 'ready', api: apiUrl, web: webUrl, webStatus: state.web, env: ports, commands: ['npm run doctor'] })
   );
 } else {
   const lines = [
     '',
     paint('1', 'Drift Bean Demo is running.'),
     `  Storefront  ${webUrl}${state.web >= 500 ? `   (answered ${state.web}: see the [web] log)` : ''}`,
-    `  Carts API   ${apiUrl}${agentMode ? '   (test agent mode)' : ''}`,
+    `  Carts API   ${apiUrl}`,
     '',
     '  Check setup:  npm run doctor',
-    ...(agentMode
-      ? ['  Try an agent: npm run demo    npm run smoke']
-      : ['  Agent mode:   restart with npm run dev:agent to use npm run demo and npm run smoke']),
     ...(ports.length ? [`  Other ports:  set ${ports.join(' ')} for those commands`] : []),
     '  Ctrl-C stops both.',
     '',

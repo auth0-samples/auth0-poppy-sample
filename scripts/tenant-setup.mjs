@@ -122,7 +122,7 @@ What to set up
 
 Mode and output
   --yes                         env TENANT_YES                apply the plan (default: print it)
-  --write-env                   env TENANT_WRITE_ENV          with --yes: write .env.local (mode 600) and apps/web/poppy.json
+  --write-env                   env TENANT_WRITE_ENV          with --yes: write .env.local (mode 600)
   --json                        env TENANT_JSON               print one JSON object (steps with id, status, message, fix)
   --help
 
@@ -1077,7 +1077,7 @@ export async function run({ argv, env, root, stdout = process.stdout, stderr = p
       add({
         id: 'env',
         status: existsSync(join(root, '.env.local')) ? 'would_update' : 'would_create',
-        message: '.env.local and apps/web/poppy.json: would write AUTH0_DOMAIN, AUTH0_CLIENT_ID, AUTH0_CLIENT_SECRET, AUTH0_AUDIENCE (and AUTH0_SECRET if unset) once you add --yes',
+        message: '.env.local: would write AUTH0_DOMAIN, AUTH0_CLIENT_ID, AUTH0_CLIENT_SECRET, AUTH0_AUDIENCE (and AUTH0_SECRET if unset) once you add --yes',
       });
     } else {
       await writeLocalFiles();
@@ -1096,8 +1096,9 @@ export async function run({ argv, env, root, stdout = process.stdout, stderr = p
     });
     if (!fetched) return;
 
-    // setup.mjs writes apps/web/poppy.json (and .env.local) when they are missing, or poppy.json still holds the example. The secret goes to it in the
-    // environment, never as an argument, so it stays out of the process list; .env.local is then completed below.
+    // setup.mjs writes .env.local when it is missing. The secret goes to it in the environment, never as an argument,
+    // so it stays out of the process list; .env.local is then completed below. The Poppy discovery document is left to
+    // `auth0 poppy setup`.
     const setup = spawnSync(process.execPath, [
       join(root, 'scripts', 'setup.mjs'),
       '--domain', cfg.host,
@@ -1128,25 +1129,8 @@ export async function run({ argv, env, root, stdout = process.stdout, stderr = p
       add({ id: 'env', status: 'failed', message: `Could not write .env.local: ${err.code ?? err.message}`, fix: 'Check the folder is writable, or copy .env.example to .env.local and fill it in by hand.' });
     }
 
-    const poppyPath = join(root, 'apps/web/poppy.json');
-    const wrote = (setup.stdout ?? '').split('\n').some((l) => l.startsWith('wrote') && l.includes('poppy.json'));
-    let problem;
-    if (setup.status !== 0) problem = `scripts/setup.mjs exited with ${setup.status}: ${(setup.stderr || setup.stdout || '').trim().split('\n')[0]}`;
-    else if (!existsSync(poppyPath)) problem = 'apps/web/poppy.json was not written';
-    else {
-      try {
-        const poppy = JSON.parse(readFileSync(poppyPath, 'utf8'));
-        if (poppy.auth?.issuer !== `https://${cfg.host}/` || !String(poppy.web?.browser_session_endpoint ?? '').includes(`/${appId}/`)) {
-          problem = `apps/web/poppy.json is for another tenant or app (issuer ${poppy.auth?.issuer})`;
-        }
-      } catch {
-        problem = 'apps/web/poppy.json is not valid JSON';
-      }
-    }
-    if (problem) {
-      add({ id: 'web-config', status: 'failed', message: problem, fix: 'Rerun auth0 poppy setup ... --out apps/web/poppy.json --overwrite-config for this tenant and app, or delete apps/web/poppy.json and run this again with --yes --write-env.' });
-    } else {
-      add({ id: 'web-config', status: wrote ? 'created' : 'ok', message: wrote ? 'apps/web/poppy.json written by scripts/setup.mjs' : 'apps/web/poppy.json already matches this tenant and app' });
+    if (setup.status !== 0) {
+      add({ id: 'web-config', status: 'failed', message: `scripts/setup.mjs exited with ${setup.status}: ${(setup.stderr || setup.stdout || '').trim().split('\n')[0]}`, fix: 'Run node scripts/setup.mjs --help, or fill .env.local by hand from .env.example.' });
     }
   }
 

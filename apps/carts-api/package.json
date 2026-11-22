@@ -8,16 +8,12 @@
   },
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "dev:test-agent": "POPPY_TEST_AGENT=1 CARTS_API_DEV_TOOLS=1 tsx watch src/server.ts",
     "start": "tsx src/server.ts",
     "test": "vitest run",
-    "smoke": "tsx scripts/smoke.ts",
-    "demo": "tsx scripts/demo.ts",
-    "typecheck": "tsc --noEmit",
-    "agent": "tsx scripts/agent.ts"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@auth0/auth0-api-js": "1.8.0-beta.0",
+    "@auth0/auth0-api-js": "file:../../vendor/auth0-auth0-api-js-1.7.0-poppy.d3d9202.tgz",
     "@upstash/redis": "^1.41.0",
     "express": "^5.1.0"
   },

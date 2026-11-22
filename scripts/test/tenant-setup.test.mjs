@@ -473,7 +473,7 @@ describe('tenant-setup against a fake tenant', () => {
     assert.equal(JSON.parse(stdout.text).ok, false);
   });
 
-  test('--write-env writes .env.local (mode 600) and the Poppy config, keeps AUTH0_SECRET, and never prints secrets', async () => {
+  test('--write-env writes .env.local (mode 600), keeps AUTH0_SECRET, and never prints secrets', async () => {
     const first = await exec('--yes', '--write-env');
     assert.equal(first.code, 0, first.out);
     const envPath = join(tmp, '.env.local');
@@ -482,10 +482,7 @@ describe('tenant-setup against a fake tenant', () => {
     assert.match(env, new RegExp(`^AUTH0_CLIENT_SECRET=${CLIENT_SECRET}$`, 'm'));
     assert.match(env, /^AUTH0_DOMAIN=127\.0\.0\.1:\d+$/m);
     assert.match(env, /^AUTH0_SECRET=[0-9a-f]{64}$/m);
-    const poppy = JSON.parse(readFileSync(join(tmp, 'apps/web/poppy.json'), 'utf8'));
-    assert.equal(poppy.protocol_version, '1.0');
-    assert.equal(poppy.auth.issuer, `https://${domain.replace('http://', '')}/`);
-    assert.ok(poppy.web.browser_session_endpoint.includes(fake.state.clients[0].client_id));
+    assert.ok(!existsSync(join(tmp, 'apps/web/poppy.json')), 'auth0 poppy setup writes poppy.json, not the provisioner');
     assert.doesNotMatch(first.out + first.err, new RegExp(`${CLIENT_SECRET}|${MGMT_SECRET}`));
 
     // a second run keeps AUTH0_SECRET and any hand-added key
@@ -497,7 +494,7 @@ describe('tenant-setup against a fake tenant', () => {
     assert.match(again, new RegExp(`^AUTH0_SECRET=${secret}$`, 'm'));
     assert.match(again, /^PUBLIC_ORIGIN=https:\/\/api\.example\.com$/m);
     assert.doesNotMatch(JSON.stringify(second.json), new RegExp(`${CLIENT_SECRET}|${MGMT_SECRET}`));
-    assert.ok(existsSync(join(tmp, 'apps/web/poppy.json')));
+    assert.ok(!existsSync(join(tmp, 'apps/web/poppy.json')));
   });
 
   test('--write-env without --yes only plans', async () => {

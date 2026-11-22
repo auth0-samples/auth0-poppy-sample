@@ -55,8 +55,6 @@ Start with `auth0 poppy doctor <your store host>`. It checks your discovery file
 |---|---|---|
 | `npm ci` cannot resolve a repository-relative dependency | Your host built only the app's subfolder | Include files outside the root directory (on Vercel: *Include source files outside of the Root Directory*); preserve the committed dependency declaration and lockfile |
 | A Vercel preview or production build fails on `apps/web/poppy.json` | `AUTH0_DOMAIN` or `AUTH0_CLIENT_ID` isn't set for that environment | Set them for Production **and** Preview |
-| Every storefront call to the API is 403 `client_not_allowed` | The API has no `STOREFRONT_CLIENT_ID` (or `AUTH0_CLIENT_ID`), or it isn't the storefront's | Set `STOREFRONT_CLIENT_ID` on the API to the storefront's client ID and restart or redeploy it |
-| A linked agent's requests are 400 `invalid_session` | Its Session arrives in the storefront token's `act` with an Auth0 agent ID, which `POPPY_AGENTS` can't name | Add its agent ID (`agt_…`) or client ID (`tpc_…`) to `POPPY_AGENT_IDS` |
 | Agents and the Auth0 hand-off get a Vercel login page | Deployment Protection is on | Turn it off for the storefront and API when testing with a real agent |
 
 Still stuck? Run `auth0 poppy doctor <host> --json` and `npm run doctor -- --json`, and [open an issue](https://github.com/atko-cic/auth0-poppy-sample/issues/new/choose) with the output (it never contains secrets).

@@ -1,11 +1,10 @@
 import "server-only";
-import { getApiAccessToken, type Caller } from "./poppy";
+import { getApiAccessToken, type Caller } from "./visitor";
 
 /**
  * Server-only client for the Carts API (CARTS_API_URL). It sends the Bearer
- * token from getApiAccessToken() in lib/poppy.ts (a person, a signed-in agent,
- * a person's guest session, an agent guest, or none), and maps 401 and 403 to
- * states the pages render.
+ * token from getApiAccessToken() in lib/visitor.ts (a person, a person's guest
+ * session, or none), and maps 401 and 403 to states the pages render.
  * The API, not this app, decides what each caller may do.
  */
 
@@ -17,30 +16,6 @@ export type Product = {
   description?: string;
   category?: string;
   weightGrams?: number;
-};
-export type AgentConnection = {
-  sessionKey: string;
-  agent: string;
-  account: string | null;
-  firstSeen: string;
-  lastSeen: string;
-  requests: number;
-  orders: number;
-  endedAt?: string;
-};
-export type ActivityEntry = {
-  id: number;
-  at: string;
-  method: string;
-  path: string;
-  status: number;
-  outcome: string;
-  detail?: string;
-  caller: string;
-  agent?: string;
-  sessionKey?: string;
-  account?: string;
-  durationMs: number;
 };
 export type CartItem = {
   productId: string;
@@ -55,8 +30,8 @@ export type Order = {
   items: CartItem[];
   totalCents: number;
   account: string;
+  /** Who placed it for the customer, or null when the customer did. */
   placedVia: string | null;
-  poppySessionKey: string | null;
   /** The simulated payment: no money moves. Absent on orders placed before checkout took a payment. */
   shipping?: { name: string; line1: string; city: string; region: string; postalCode: string; country: string };
   payment?: { status: "paid"; method: "test_card"; brand: string; last4: string; amountCents: number; reference: string };
@@ -68,7 +43,6 @@ export type ApiFailureReason =
   | "sign_in_required" // 401 without a usable token: ask the caller to sign in
   | "token_rejected" // 401 with error="invalid_token": sign in again
   | "forbidden" // 403, including insufficient_scope
-  | "session_ended" // 400 invalid_session / session_ended (Poppy Session gone)
   | "unavailable" // API down, timeout, 5xx
   | "error"; // anything else
 
@@ -165,10 +139,7 @@ async function call<T>(
       ok: false,
       status: 401,
       reason: "sign_in_required",
-      message:
-        caller === "agent_guest"
-          ? "This step is for the customer's account. Once the customer approves the agent, it can join again."
-          : "Sign in to continue.",
+      message: "Sign in to continue.",
       scope: challenge.scope,
       caller
     };
@@ -184,15 +155,6 @@ async function call<T>(
           ? `This needs one more permission${missing}. Sign in again to approve it.`
           : "This needs additional permission.",
       scope: challenge.scope,
-      caller
-    };
-  }
-  if (res.status === 400 && (bodyError === "invalid_session" || bodyError === "session_ended")) {
-    return {
-      ok: false,
-      status: 400,
-      reason: "session_ended",
-      message: "This agent's session is complete. It can join again whenever it's ready.",
       caller
     };
   }
@@ -256,25 +218,8 @@ export const cartsApi = {
     );
   },
 
-  async orders(placedVia?: "agent" | "person"): Promise<ApiResult<Order[]>> {
-    const query = placedVia ? `?placedVia=${placedVia}` : "";
-    return mapResult(await call<unknown>("GET", `/orders${query}`), (d) => unwrapList<Order>(d, "orders"));
-  },
-
-  /** The customer's connected agents. People only: the API refuses agents with 403 policy_denied. */
-  async agents(): Promise<ApiResult<AgentConnection[]>> {
-    return mapResult(await call<unknown>("GET", "/agents"), (d) => unwrapList<AgentConnection>(d, "agents"));
-  },
-
-  disconnectAgent(sessionKey: string) {
-    return call<unknown>("DELETE", `/agents/${encodeURIComponent(sessionKey)}`);
-  },
-
-  /** Agent requests on the customer's account, newest first. */
-  async activity(): Promise<ApiResult<ActivityEntry[]>> {
-    return mapResult(await call<unknown>("GET", "/activity?agentOnly=true"), (d) =>
-      unwrapList<ActivityEntry>(d, "entries")
-    );
+  async orders(): Promise<ApiResult<Order[]>> {
+    return mapResult(await call<unknown>("GET", "/orders"), (d) => unwrapList<Order>(d, "orders"));
   },
 
   whoami() {

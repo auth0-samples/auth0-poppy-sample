@@ -10,7 +10,7 @@ export async function proxy(request: NextRequest) {
   return response;
 }
 
-// Must let /.well-known/* through so the SDK can serve the Poppy discovery files.
+// Lets /.well-known/* through to auth0.middleware(), so the SDK can serve discovery files when you turn them on.
 export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)"]
 };

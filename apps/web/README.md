@@ -12,7 +12,7 @@
 
 | | |
 |---|---|
-| Poppy lives in | [`lib/auth0.ts`](lib/auth0.ts), [`lib/poppy.ts`](lib/poppy.ts), [`proxy.ts`](proxy.ts), [`poppy.example.json`](poppy.example.json) |
+| Poppy lives in | [`lib/auth0.ts`](lib/auth0.ts), [`lib/poppy.ts`](https://github.com/atko-cic/auth0-poppy-sample/blob/main/apps/web/lib/poppy.ts), [`proxy.ts`](proxy.ts), [`poppy.example.json`](poppy.example.json) |
 | Pages | `/` catalog · `/products/[id]` · `/cart` · `/orders` · `/account` · `/agents` (see and disconnect agents) · `/privacy` · `/debug` |
 | Serves | `/.well-known/poppy.json` · `/.well-known/oauth-protected-resource` · `/llms.txt` |
 | Calls | the [Carts API](../carts-api) at `CARTS_API_URL` |
@@ -44,7 +44,7 @@ Preserve the server-side authorization boundaries when changing these helpers; a
 ## Requirements
 
 - Node.js 22 or later, and npm.
-- Next.js 16 and React 19. The SDK is mounted in `proxy.ts`, Next.js 16's name for the file that was `middleware.ts`, with the function exported as `proxy`. The proxy runs on the Node.js runtime, not Edge. Builds use Turbopack, which resolves the SDK's `next/server.js` imports; `next build --webpack` would need the old `next/server.js` alias back (`"next/server.js$": "next/dist/server/web/exports/index.js"` in `next.config.ts`).
+- Next.js 16 and React 19. The SDK is mounted in `proxy.ts`, Next.js 16's name for the file that was `middleware.ts`, with the function exported as `proxy`. The proxy runs on the Node.js runtime, not Edge. Builds use Turbopack, which resolves `@auth0/nextjs-auth0`'s `next/server.js` imports; `next build --webpack` would need the old `next/server.js` alias back (`"next/server.js$": "next/dist/server/web/exports/index.js"` in `next.config.ts`).
 - An Auth0 tenant with Poppy enabled, a Regular Web Application, and an API whose identifier is `AUTH0_AUDIENCE`.
 
 ## Setup
@@ -74,7 +74,7 @@ Preserve the server-side authorization boundaries when changing these helpers; a
    | `CARTS_API_URL` | Where the Carts API listens, for example `http://localhost:4001` |
    | `POPPY_DOMAIN` | Optional public host override (no scheme); otherwise derived from `APP_BASE_URL`. Production builds require a public host |
 
-3. **Poppy config.** Follow [public-store setup](../../docs/tenant-setup.md#4-enable-poppy-for-a-public-store). `auth0 poppy setup --out apps/web/poppy.json` writes the discovery document, and `lib/auth0.ts` hands it to the SDK as it is (`POPPY_DOMAIN` replaces `organization.domain`). Until then, `npm run dev`, `npm run build` and `npm run typecheck` write one from `AUTH0_DOMAIN` and `AUTH0_CLIENT_ID` (`scripts/ensure-poppy-config.mjs`). Verify served discovery, not just the local file. The file is tenant-specific and gitignored.
+3. **Poppy config.** Follow [public-store setup](../../docs/tenant-setup.md#4-enable-poppy-for-a-public-store). `auth0 poppy setup --out apps/web/poppy.json` writes the discovery document, and `lib/auth0.ts` hands it to the SDK as it is (`POPPY_DOMAIN` replaces `organization.domain`). A build with no file (a hosted one) writes it from `AUTH0_DOMAIN` and `AUTH0_CLIENT_ID` (`scripts/ensure-poppy-config.mjs`); `npm run dev` never does, so it can't get in the CLI's way. Verify served discovery, not just the local file. The file is tenant-specific and gitignored.
 
 4. **Anonymous sessions (guest carts).** Follow [tenant setup](../../docs/tenant-setup.md) for the application setting, the API's anonymous-user policy, and the anonymous client grant with `cart:write`. All three are required. Guest-cart provisioning is separate from Poppy setup and agent registration.
 5. **Auth0 application settings.** Add `http://localhost:3000/auth/callback` to Allowed Callback URLs and `http://localhost:3000` to Allowed Logout URLs. Add the tunnel equivalents when you test with an agent.

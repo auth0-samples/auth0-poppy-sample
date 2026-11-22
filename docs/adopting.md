@@ -33,10 +33,10 @@ Customer-only actions still need an application policy. Drift Bean Demo refuses 
 
 | What | Reference | What to add |
 |---|---|---|
-| Verifier | `apps/carts-api/src/auth0.ts` | Create one `ApiClient` with your domain and audience. Set `poppy.verifySession: true`, allowed agents (always pass `agents`: an empty list refuses every agent, while leaving it out accepts any), a session store and the public HTTPS origin. |
-| Caller resolution | `resolveCaller()` in `apps/carts-api/src/auth.ts` | Call `verifyPoppyRequest` once per request. Distinguish guest and account callers, including agent sessions carried in token `act` claims. Take a token without a Session as the customer's only when your storefront holds it (`azp`), and apply your allow list to Sessions in `act`, by URL or by linked Auth0 agent ID. |
+| Verifier | `apps/carts-api/src/auth0.ts` | Create one `ApiClient` with your domain and audience. Set `poppy.verifySession: true`, allowed agents, a session store and the public HTTPS origin. |
+| Caller resolution | `resolveCaller()` in `apps/carts-api/src/auth.ts` | Call `verifyPoppyRequest` once per request. Distinguish guest and account callers, including agent sessions carried in token `act` claims. |
 | Data ownership | `resolveCaller()` in `auth.ts` | Key agent-session data by `poppy.key`, which stays the same across sign-in. Use `claims.sub` as an account only for a signed-in caller. |
-| Customer approval | `POST /orders` in `apps/carts-api/src/app.ts` | Throw `SignInRequiredError({ scope: 'orders:write' })` when the operation needs an account. Check the agent's scope separately once signed in, and answer 403 `insufficient_scope` naming it. Accept an `Idempotency-Key` on operations an agent may retry. |
+| Customer approval | `POST /orders` in `apps/carts-api/src/app.ts` | Throw `SignInRequiredError({ scope: 'orders:write' })` when the operation needs an account. Check the agent's scope separately once signed in, and answer 403 `insufficient_scope` naming it. |
 | HTTP errors | Error handler in `app.ts` | Use `toHttpErrorResponse(error)` for SDK status, headers and body. Keep application validation and scope failures explicit. |
 
 ```ts
@@ -55,7 +55,7 @@ These are independent of the protocol:
 - `openapi.ts`: an OpenAPI document at `/openapi.json`. Check that your public discovery document advertises the API as expected; a config file on disk is not proof of the served response.
 - `lib/guest-cart.ts`: a person's anonymous-cart merge. An agent keeps its session key and does not use this merge.
 
-Disconnecting a stored API session and revoking browser sessions or OAuth tokens are separate operations. Ending a Session refuses that Session; the agent can start a new one and, while its tokens and grant are valid, sign in again without a new approval. Do not promise immediate browser logout or a required re-approval based on an API-session disconnect alone.
+Disconnecting a stored API session and revoking browser sessions or OAuth tokens are separate operations. Do not promise immediate browser logout based on an API-session disconnect alone.
 
 ## Verify the integration
 
