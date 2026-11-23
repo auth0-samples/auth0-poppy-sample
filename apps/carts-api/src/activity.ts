@@ -24,7 +24,7 @@ export interface ActivityEntry {
   caller: CallerKind;
   /** The agent's client metadata URL, when a `Poppy-Session` header was verified. */
   agent?: string;
-  /** `poppy.key`: one Session of one agent with one User. */
+  /** `poppy.key`: one Session of one User, built from the Session ID and the User ID. */
   sessionKey?: string;
   /** The account the request ran as, if any. */
   account?: string;
