@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, wip]
+    branches: [main, starter]
   pull_request:
 
 permissions:
@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   check:
-    runs-on: ubuntu-22.04-2cpu-8ram-75ssd
+    runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
