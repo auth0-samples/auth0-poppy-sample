@@ -71,9 +71,9 @@ All JSON. Errors from `verifyPoppyRequest` go through `toHttpErrorResponse`.
 - otherwise a person's verified token: `user:${claims.sub}`;
 - otherwise `SignInRequiredError`.
 
-A guest agent and the same agent signed in share `poppy.key`, because the key is built from the agent, the Session ID and the User ID. So the cart carries over with no merge step.
+A guest agent and the same agent signed in share `poppy.key`, because the key is built from the Session ID and the User ID, which stay the same when the agent signs in. So the cart carries over with no merge step.
 
-**Linked agents (a known limitation).** The SDK builds `poppy.key` from the agent's ID as the request names it: the metadata URL (`iss`) for a `Poppy-Session` header, and `act.sub` for a Session carried in the storefront's token. For an agent linked to an Auth0 agent, `act.sub` is its Auth0 agent ID (`agt_…`), not its URL, so the same Session gets two keys: the cart such an agent fills by calling the API directly is not the one the storefront shows it. `@auth0/auth0-api-js` documents this and does not map one to the other. It needs Auth0 to put the metadata URL in `act` (or the SDK to map the agent ID to it). Until then, a linked agent should use one path for its cart. Linked agents are accepted only when `POPPY_AGENT_IDS` lists their agent ID or client ID.
+**Linked agents.** A Session has the same `poppy.key` whether it arrives in a `Poppy-Session` header or in the storefront's token, also for an agent linked to an Auth0 agent, so the cart such an agent fills by calling the API directly is the one the storefront shows. The agent isn't part of the beta key. `agent.id` does differ between the paths (the metadata URL from the header, the Auth0 agent ID `agt_…` from the token), so don't compare it across them. Linked agents are accepted only when `POPPY_AGENT_IDS` lists their agent ID or client ID.
 
 A person's guest cart doesn't carry over by itself (the anonymous `sub` is not the account), so the storefront calls `POST /cart/merge` once after the person signs in, then ends the anonymous session. People only: agents never merge.
 
