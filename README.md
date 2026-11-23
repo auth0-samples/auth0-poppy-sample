@@ -2,7 +2,7 @@
 
 # Auth0 Poppy reference app
 
-[![CI](https://github.com/atko-cic/auth0-poppy-sample/actions/workflows/ci.yml/badge.svg)](https://github.com/atko-cic/auth0-poppy-sample/actions/workflows/ci.yml)
+[![CI](https://github.com/auth0-samples/auth0-poppy-sample/actions/workflows/ci.yml/badge.svg)](https://github.com/auth0-samples/auth0-poppy-sample/actions/workflows/ci.yml)
 [![Node](https://img.shields.io/badge/node-%3E%3D22-blue.svg?style=flat)](#run-locally)
 [![Poppy](https://img.shields.io/badge/protocol-Poppy-blue.svg?style=flat)](https://personalagentprotocol.org)
 
