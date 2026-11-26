@@ -10,7 +10,7 @@ Drift Bean Demo is a Next.js storefront and Express API that accepts personal AI
 
 Use this repository to see the Auth0 SDK integration in a working store: browse products, keep a guest cart through sign-in, approve an agent, see its orders, and disconnect its session.
 
-[Run locally](#run-locally) · [Explore the app](#explore-the-app) · [Code tour](docs/tour.md) · [Deploy and update](docs/deploy.md) · [Add Poppy to your app](docs/adopting.md)
+[Quickstart](https://auth0.com/docs/ai-agents-mcp/personal-agents/quickstart) · [Run locally](#run-locally) · [Explore the app](#explore-the-app) · [Code tour](docs/tour.md) · [Deploy and update](docs/deploy.md) · [Add Poppy to your app](docs/adopting.md)
 
 [![Deploy API to Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fatko-cic%2Fauth0-poppy-sample&root-directory=apps%2Fcarts-api&project-name=driftbean-carts-api&repository-name=driftbean-poppy-sample&env=AUTH0_DOMAIN%2CAUTH0_AUDIENCE%2CSTOREFRONT_CLIENT_ID%2CPOPPY_AGENTS&envDescription=Auth0%20tenant%20domain%2C%20API%20identifier%2C%20storefront%20client%20ID%20and%20allowed%20agent%20URLs&envLink=https%3A%2F%2Fgithub.com%2Fatko-cic%2Fauth0-poppy-sample%2Fblob%2FHEAD%2Fdocs%2Fdeploy.md%23environment)
 
@@ -20,7 +20,7 @@ Use this repository to see the Auth0 SDK integration in a working store: browse 
 
 ## Run locally
 
-Starting from nothing? These steps take you from no Auth0 account to a working store. You need Node 22+ and Git. Auth0 configuration uses the [Auth0 CLI](https://github.com/auth0/auth0-cli); `npm` scripts only install, run and check this repository.
+Starting from nothing? These steps take you from no Auth0 account to a working store. The [Personal Agents quickstart](https://auth0.com/docs/ai-agents-mcp/personal-agents/quickstart) on auth0.com walks through the same store with the Auth0 docs' SDK and CLI setup. You need Node 22+ and Git. Auth0 configuration uses the [Auth0 CLI](https://github.com/auth0/auth0-cli); `npm` scripts only install, run and check this repository.
 
 **1. Create an Auth0 account.** [Sign up for free](https://auth0.com/signup). Signing up creates your first tenant, a separate Auth0 environment for this sample's application and API.
 
